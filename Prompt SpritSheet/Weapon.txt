@@ -1,0 +1,77 @@
+The attached B1, B2, and B3 images contain the complete Bad World weapon collection.
+
+Convert EVERY visually distinct weapon into a modular, high-resolution pixel-art game asset.
+
+Do not rely only on labels because several labels are duplicated or inconsistent. Every visually different design must remain a separate weapon.
+
+FOR EVERY WEAPON CREATE:
+
+1. INVENTORY ICON
+- 256×128 transparent PNG
+- accurate side view
+
+2. GROUND PICKUP SPRITE
+- SE, SW, NE, NW
+
+3. HAND-HELD OVERLAY
+- SE, SW, NE, NW
+- aligned for a 256×384 character frame
+- no character body or hands
+
+INCLUDE EVERY DISTINCT:
+
+B1:
+- Tactical Knife
+- Short Spear
+- Tactical Axe
+- Striking Iron/Baton
+- Hand Grenade
+- Smoke Grenade
+- Flash Grenade
+- Standard Pistol
+- Compact Pistol
+- Tactical Revolver
+
+B2:
+- every carbine
+- every bullpup
+- every assault rifle
+- every modular rifle
+- every compact carbine
+- Battle Rifle
+- Vintage Rifle
+- Next-Generation Rifle
+- Precision Rifle
+- PDW-Rifle
+- every unlabeled but visually distinct firearm
+
+B3:
+- Heavy Sniper
+- every Bazooka variant
+- RPG-7
+- Revolving Grenade Launcher
+
+Preserve exact silhouette, barrel, stock, magazine, scope, suppressor, grip, blade, cylinder, launcher tube, and colors.
+
+Also create these separate transparent pixel VFX:
+
+- pistol muzzle flash in four directions
+- rifle muzzle flash in four directions
+- machine-gun muzzle flash in four directions
+- sniper muzzle flash in four directions
+- launcher backblast
+- bullet tracer
+- shell casing
+- bullet impact on wall, metal, vehicle, and ground
+- knife slash arc
+- spear thrust trail
+- axe slash arc
+- grenade explosion
+- smoke-grenade cloud
+- flash-grenade burst
+- RPG/Bazooka explosion
+- grenade-launcher explosion
+- standing, walking, crouched, and downed ground shadows
+
+Do not include character bodies, environment, UI, or text.
+Use authentic crisp pixel art, not a pixel filter.

@@ -1,0 +1,57 @@
+Lanjutkan dari MVP 6.
+
+Kerjakan MVP 7: Release Candidate Validation.
+
+Jangan menambahkan fitur besar baru. Fokus pada perbaikan.
+
+Lakukan:
+1. Audit seluruh placeholder.
+2. Pisahkan placeholder yang aman untuk MVP dan yang wajib diganti.
+3. Jalankan automated tests.
+4. Jalankan integration tests.
+5. Jalankan headless AI simulations.
+6. Uji seluruh campaign pada Easy, Medium, Hard.
+7. Uji setiap kondisi kemenangan/kekalahan.
+8. Uji unit cap.
+9. Uji payroll.
+10. Uji ammo habis.
+11. Uji factory/dealer/bank loop.
+12. Uji kendaraan dan turret.
+13. Uji safe zone exploit.
+14. Uji Main Character death.
+15. Uji special-unit balance.
+16. Uji AI ambush frequency.
+17. Uji save/load dan migration.
+18. Periksa memory leak, orphan node, navigation spike, dan frame drop.
+19. Optimalkan pathfinding dan update AI.
+20. Gunakan pooling/culling bila diperlukan.
+21. Targetkan 60 FPS dengan seluruh faction aktif dan unit mendekati batas.
+22. Buat Windows export preset.
+23. Hasilkan build Windows.
+24. Jalankan build hasil export, bukan hanya editor.
+25. Perbarui README dan seluruh dokumentasi.
+
+Balance report wajib berisi:
+- Average match duration.
+- Win rate setiap faction.
+- Income per minute.
+- Average army size.
+- Special unit effectiveness.
+- Vehicle effectiveness.
+- Frekuensi DEA response.
+- Frekuensi ambush.
+- Main Character survival rate.
+- Perbedaan Easy/Medium/Hard.
+- Rekomendasi perubahan angka.
+
+Final report wajib membedakan:
+- Selesai dan terverifikasi.
+- Selesai tetapi belum terverifikasi penuh.
+- Masih placeholder.
+- Belum dikerjakan.
+- Known bugs.
+- Risiko teknis.
+- Cara menjalankan source.
+- Cara membuat Windows build.
+
+Jangan menyebut production-ready jika masih ada blocker kritis.

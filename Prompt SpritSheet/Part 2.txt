@@ -1,0 +1,99 @@
+Using the approved character design and the three attached Bad World weapon reference sheets, generate COMPLETE MODULAR FIREARM BODY ANIMATIONS.
+
+The character body and weapons must remain separate layers.
+
+Create every body animation in SE, SW, NE, and NW.
+
+HANDGUN — for Standard Pistol and Compact Pistol:
+
+1. AIM HANDGUN
+- 3 frames
+
+2. FIRE HANDGUN
+- 6 frames
+- aim, trigger, recoil, recover
+
+3. RELOAD MAGAZINE PISTOL
+- 8 frames
+- remove magazine, insert magazine, manipulate slide, return to aim
+
+REVOLVER:
+
+4. AIM REVOLVER
+- 3 frames
+
+5. FIRE REVOLVER
+- 6 frames
+
+6. RELOAD REVOLVER
+- 10 frames
+- open cylinder, remove cartridges, insert cartridges, close cylinder
+
+RIFLE/CARBINE/PDW:
+
+7. AIM LONG GUN
+- 3 frames
+
+8. FIRE LONG GUN
+- 6 frames
+
+9. AUTOMATIC FIRE
+- 8-frame loop
+
+10. RELOAD LONG GUN
+- 10 frames
+
+SNIPER:
+
+11. AIM SNIPER
+- 4 frames
+
+12. FIRE SNIPER
+- 8 frames
+- strong but realistic recoil
+
+13. BOLT/RELOAD SNIPER
+- 10 frames
+
+MACHINE GUN:
+
+14. BRACE MACHINE GUN
+- 4 frames
+
+15. FIRE MACHINE GUN
+- 8-frame loop
+
+16. RELOAD MACHINE GUN
+- 12 frames
+
+BAZOOKA/RPG:
+
+17. AIM SHOULDER LAUNCHER
+- 3 frames
+
+18. FIRE SHOULDER LAUNCHER
+- 8 frames
+- strong recoil and backblast body reaction
+
+19. RELOAD SHOULDER LAUNCHER
+- 12 frames
+
+REVOLVING GRENADE LAUNCHER:
+
+20. AIM GRENADE LAUNCHER
+- 3 frames
+
+21. FIRE GRENADE LAUNCHER
+- 8 frames
+
+22. RELOAD GRENADE LAUNCHER
+- 12 frames
+
+WEAPON RULES:
+- use exact weapon designs from the references
+- every visually different weapon remains a separate asset
+- do not substitute generic guns
+- do not merge weapons with the body
+- no muzzle flash, tracer, projectile, casing, smoke, or explosion baked into the character
+- hands must use correct grip positions
+- weapon scale and direction must remain consistent

@@ -1,0 +1,44 @@
+Lanjutkan dari MVP 2.
+
+Kerjakan MVP 3: Open-World Economy dan Vehicle Loop.
+
+Implementasikan:
+1. World map playable dengan empat wilayah dan Central City.
+2. HQ Bellarosa, Vartieri, Nasion, dan DEA.
+3. Bank, Recruitment, Gun Shop, Garage.
+4. Empat Drug Dealer:
+   - Gunakan tiga aset yang tersedia.
+   - Drug Dealer 4 wajib diberi label placeholder.
+5. Pabrik masing-masing cartel.
+6. Cargo production dan factory upgrade Level 1–4.
+7. Unit/vehicle dapat mengambil dan membawa cargo.
+8. Dealer demand dan diminishing price.
+9. Carried cash terpisah dari bank balance.
+10. Deposit ATM/Bank.
+11. Loot carried cash sesuai aturan.
+12. Garage dan empat kelas kendaraan.
+13. Enter/exit kendaraan.
+14. Seat capacity.
+15. Kendaraan mengangkut unit/cargo/cash.
+16. Gun Truck/APC dapat menembak sambil bergerak.
+17. Repair kendaraan.
+18. Patrol area untuk cartel.
+19. Heat Meter.
+20. DEA response setelah 120 detik perang + 60 detik perjalanan.
+21. HQ/pabrik dapat dihancurkan dan diperbaiki.
+22. Minimap, alert, route, dan objective HUD.
+
+Acceptance criteria:
+- Satu loop lengkap dapat dimainkan:
+  pabrik → cargo → dealer → carried cash → Bank → pembelian.
+- Kehilangan carrier sebelum Bank memiliki konsekuensi.
+- Empat dealer mempunyai demand terpisah.
+- Pemain dapat membeli kendaraan, masuk, bergerak, keluar.
+- Kapasitas kendaraan benar-benar dibatasi.
+- Turret bergerak mempunyai accuracy penalty.
+- DEA tidak spawn tepat di atas pemain.
+- Safe zone tetap berfungsi.
+- Menghancurkan pabrik mengganggu produksi tetapi tidak langsung mengalahkan faction.
+- Save/load menyimpan economy, cargo, kendaraan, Heat, dan bangunan.
+
+Profiling navigation dan kendaraan, laporkan hasil, lalu berhenti.

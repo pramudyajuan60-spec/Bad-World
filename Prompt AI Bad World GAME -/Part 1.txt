@@ -1,0 +1,928 @@
+Anda adalah senior game engineer, technical game designer, gameplay programmer, AI programmer, UI/UX engineer, dan QA engineer. Tugas Anda adalah membangun game single-player open-world real-time strategy bernama “BAD WORLD” secara bertahap dan benar-benar playable.
+
+REPOSITORY SUMBER:
+https://github.com/pramudyajuan60-spec/Bad-World
+Gunakan commit:
+f5aa92e45553f49455051cd223fb3ab4150bd5a6
+
+TARGET:
+- Platform utama: PC Windows.
+- Engine: Godot 4.x stable, bukan beta.
+- Bahasa pemrograman: typed GDScript.
+- Mode: single-player offline.
+- Resolusi target: 1920×1080, tetapi UI harus responsif untuk 1366×768.
+- Target performa: 60 FPS pada 1080p.
+- Visual: 2.5D isometric menggunakan dunia 2D, fixed three-quarter camera dari satu sisi, Y-sorting, bayangan, pencahayaan, efek ketinggian, dan sprite multi-arah.
+- Kamera dapat digeser dan di-zoom, tetapi sudut pandang tidak diputar bebas.
+- Tidak ada multiplayer pada scope ini.
+
+ATURAN KERJA:
+1. Jangan langsung mencoba membuat seluruh game sekaligus.
+2. Kerjakan sesuai urutan MVP yang diberikan.
+3. Jangan mengklaim sebuah fitur selesai jika belum dijalankan dan diuji.
+4. Jangan hanya memberikan snippet atau penjelasan. Lakukan perubahan nyata di repository.
+5. Jangan menghapus atau mengubah aset asli secara destruktif.
+6. Simpan aset turunan, crop, placeholder, sprite sementara, atau hasil olahan di direktori terpisah.
+7. Sebelum coding, baca seluruh Story.txt dan periksa seluruh gambar.
+8. Concept art bukan otomatis map playable atau sprite siap animasi.
+9. Semua placeholder harus memiliki nama/label PLACEHOLDER dan dicatat di:
+   docs/PLACEHOLDER_REGISTER.md
+10. Semua angka gameplay harus data-driven, bukan hard-coded di banyak script.
+11. Jika ada keputusan yang belum benar-benar blocking, pilih solusi paling masuk akal dan catat asumsi. Jangan terus-menerus menghentikan pekerjaan hanya untuk bertanya.
+12. Setelah setiap MVP:
+   - Jalankan project.
+   - Jalankan test.
+   - Periksa error dan warning.
+   - Laporkan file yang berubah.
+   - Laporkan fitur yang benar-benar dapat dimainkan.
+   - Laporkan kekurangan yang belum selesai.
+   - Berhenti sebelum mengerjakan MVP berikutnya.
+
+==================================================
+IDENTITAS DAN NAMA RESMI
+==================================================
+
+Gunakan internal ID yang stabil, terpisah dari display name.
+
+1. campaign_juan
+   Menu: “Campaign Juan”
+   Main Character: Juan Bellarosa
+   Faction: Bellarosa Syndicate
+
+2. campaign_fauzi
+   Menu: “Campaign Fauzi”
+   Main Character: Zie Vartieri
+   Faction: Vartieri Cartel
+
+3. campaign_atha
+   Menu: “Campaign Atha”
+   Main Character: Andrés A. Násion
+   Faction: Nasion Familia
+
+4. campaign_nabil
+   Menu: “Campaign Nabil”
+   Main Character: Nabil Verhan
+   Faction: DEA Administrator
+
+Jangan mengubah nama Zie menjadi Valtieri. Bentuk resmi yang digunakan adalah:
+“Zie Vartieri — Vartieri Cartel”.
+
+“Atha” dan “Fauzi” hanya nama campaign di menu. Nama karakter tetap Andrés A. Násion dan Zie Vartieri.
+
+Baca cerita kanonik dari:
+- Assets/Campaign/Bellarosa Syndicate/Main Character/Story.txt
+- Assets/Campaign/Valtieri Cartel/Main Character/Story.txt
+- Assets/Campaign/Nasion Familia/Main Character/Story.txt
+- Assets/Campaign/DEA Administrator/Main Character/Story.txt
+
+Jangan menulis ulang atau mengubah lore utama tanpa alasan. Gunakan cerita tersebut untuk intro campaign, objective, loading screen, hubungan antarkarakter, dan story event.
+
+==================================================
+KONDISI ASET
+==================================================
+
+Repository awal merupakan asset-only repository. Belum tersedia project game, tilemap, collision, animasi, audio, VFX, navigation data, maupun source code.
+
+Masalah aset yang sudah diketahui:
+- Hanya ada Drug Dealer 1–3, sedangkan game membutuhkan 4.
+- Drug Dealer 4 harus menggunakan placeholder yang jelas.
+- Nabil membutuhkan 3 unit B2 awal, tetapi hanya tersedia 2 desain B2. Desain ketiga boleh berupa variasi placeholder.
+- Map Juan masih memiliki label Nasion Familia yang keliru.
+- Recruitment Place secara visual masih bertuliskan ARMORY.
+- Special unit Nabil bernomor 1, 2, 8, dan 4. Perlakukan angka 8 sebagai unit nomor 3 sampai aset diperbaiki.
+- Concept art Vartieri tidak memperlihatkan kapak, sniper, dan machine gun secara konsisten.
+- Tidak ada audio, animasi lengkap, projectile, VFX, atau spritesheet gameplay final.
+
+Gunakan gambar asli sebagai:
+- Referensi visual.
+- Portrait.
+- Campaign card.
+- Loading screen.
+- Story panel.
+- Referensi pembuatan placeholder.
+
+Jangan menganggap concept map sebagai collision-ready map. Bangun versi playable dengan geometry dan navigation sederhana yang mengikuti komposisi concept art.
+
+==================================================
+STRUKTUR DUNIA
+==================================================
+
+Buat satu dunia open-world 2.5D dengan:
+- Bellarosa Syndicate HQ.
+- Vartieri Cartel HQ.
+- Nasion Familia HQ.
+- DEA Regional Field Office.
+- Central City.
+- Bank/ATM.
+- Recruitment.
+- Gun Shop.
+- Garage.
+- Empat Drug Dealer.
+- Pabrik masing-masing cartel.
+- Jalan, jembatan, pelabuhan, gang, checkpoint, area kota, dan jalur penyergapan.
+
+World map harus mengambil inspirasi dari Assets/Game Maps/World.png:
+- Bellarosa di barat laut.
+- DEA di timur laut.
+- Nasion di barat daya.
+- Vartieri di tenggara.
+- Central City di tengah.
+
+Gunakan world partition/chunk sederhana jika diperlukan, tetapi perpindahan antarlokasi tidak boleh berupa menu terpisah. Dunia harus terasa menyambung.
+
+==================================================
+INPUT DAN KONTROL RTS
+==================================================
+
+Kontrol PC:
+- Klik kiri: memilih satu unit.
+- Shift + klik kiri: tambah/kurangi selection.
+- Drag klik kiri: box selection.
+- Double-click: memilih unit sejenis yang terlihat.
+- Klik kanan pada tanah: move command.
+- Klik kanan pada musuh: attack command.
+- Klik kanan pada kendaraan: masuk kendaraan jika ada kursi.
+- A + klik: attack-move.
+- D: Defend/Cover Mode.
+- P: Patrol Mode.
+- S: Stop.
+- G: Guard target.
+- Tab: berpindah antara unit yang dipilih.
+- Ctrl + angka: control group.
+- Angka: memilih control group.
+- WASD atau edge-scroll: gerakkan kamera.
+- Mouse wheel: zoom.
+- Space: fokus ke alert terakhir.
+- Escape: pause menu.
+
+Unit harus menggunakan formation spacing, local avoidance, dan tidak menumpuk di titik yang sama.
+
+==================================================
+BATAS UNIT
+==================================================
+
+- Juan: maksimal 30 anggota yang direkrut, tidak termasuk Juan. Total maksimum 31 karakter.
+- Zie: maksimal 30 anggota yang direkrut, tidak termasuk Zie. Total maksimum 31 karakter.
+- Andrés: maksimal 30 anggota yang direkrut, tidak termasuk Andrés. Total maksimum 31 karakter.
+- Nabil: maksimal 24 anggota yang direkrut, tidak termasuk Nabil. Total maksimum 25 karakter.
+
+Special unit tetap dihitung sebagai anggota.
+
+==================================================
+GAMEPLAY LOOP CARTEL
+==================================================
+
+Untuk Juan, Zie, dan Andrés:
+
+1. Mengelola Main Character.
+2. Merekrut unit di Recruitment.
+3. Membeli senjata dan amunisi di Gun Shop.
+4. Memasangkan senjata secara manual kepada setiap unit.
+5. Mengambil cargo dari pabrik.
+6. Membawa cargo ke salah satu dari empat Drug Dealer.
+7. Menerima uang sebagai carried cash pada unit/kendaraan.
+8. Membawa carried cash ke Bank/ATM.
+9. Menggunakan uang bank untuk unit, gaji, kendaraan, senjata, upgrade, dan perbaikan.
+10. Mempertahankan HQ, pabrik, rute, dan Main Character.
+11. Mengganggu ekonomi lawan.
+12. Mengeliminasi Main Character lawan.
+
+Uang hasil penjualan belum aman sebelum disimpan ke Bank.
+
+==================================================
+GAMEPLAY LOOP NABIL
+==================================================
+
+Nabil tidak menjual cargo.
+
+Sumber pendapatannya:
+- City Patrol.
+- Anggaran DEA.
+- Mengamankan sebagian carried cash milik cartel yang dikalahkan sebelum uang masuk Bank.
+- Reward objective dan operasi.
+
+Nabil tidak membeli senjata biasa. Senjata dibuat di DEA Armory menggunakan Parts dan waktu crafting.
+
+Nabil:
+- Tidak mempunyai unit B1.
+- Spawn dengan Nabil + 3 unit B2.
+- Memiliki unit individu terkuat.
+- Memiliki ekonomi paling lambat.
+- Memiliki akses dekat ke armory dan kendaraan.
+- Maksimal 24 anggota di luar Nabil.
+- Menang dengan mengeliminasi seluruh cartel dan menghentikan seluruh pabrik cartel.
+
+==================================================
+BALANCE V0.1
+==================================================
+
+Semua angka harus disimpan dalam Resource/JSON/data table dan mudah diubah.
+
+BASE UNIT:
+
+B1:
+- HP 100
+- Base accuracy 55%
+- Move speed 3.2
+- Recruit level 1
+
+B2:
+- HP 170
+- Base armor 2
+- Base accuracy 68%
+- Move speed 3.0
+- Recruit level 2
+
+B3:
+- HP 250
+- Base armor 4
+- Base accuracy 76%
+- Move speed 2.8
+- Recruit level 3
+
+Special:
+- Statistik berbeda per unit.
+- Unlock level 4.
+- Setiap special adalah unit unik, maksimal satu untuk setiap jenis.
+- Special tidak menyerah dan tidak dapat direkrut musuh.
+
+RECRUITMENT DAN GAJI:
+Gaji dibayar setiap 120 detik gameplay.
+
+Juan:
+- B1: harga $300, gaji $35
+- B2: harga $800, gaji $90
+- B3: harga $1,800, gaji $180
+- Special: harga $5,500, gaji $400
+
+Zie:
+- B1: harga $330, gaji $40
+- B2: harga $850, gaji $95
+- B3: harga $1,900, gaji $190
+- Special: harga $6,500, gaji $450
+
+Andrés:
+- B1: harga $250, gaji $30
+- B2: harga $650, gaji $75
+- B3: harga $1,500, gaji $150
+- Special: harga $5,000, gaji $350
+
+Nabil:
+- Tidak ada B1
+- B2: harga $1,000, gaji $110
+- B3: harga $2,200, gaji $220
+- Special: harga $7,500, gaji $500
+
+Gaji yang gagal dibayar:
+- Satu siklus: accuracy -10 poin, speed -10%, morale turun.
+- Dua siklus: B1 dapat desertir; B2/B3/Special tetap ada tetapi mendapat penalti combat.
+- Setelah dibayar, morale pulih bertahap.
+- Jangan membuat unit hilang tanpa peringatan HUD.
+
+STARTING RESOURCES:
+- Juan: $4,000, Juan + 3 B1, pabrik level 1, kendaraan utilitas.
+- Zie: $4,500, Zie + 3 B1, pabrik level 1, armored SUV.
+- Andrés: $5,500, Andrés + 3 B1, pabrik level 2, kendaraan utilitas.
+- Nabil: $6,500, Nabil + 3 B2, DEA HQ, patrol van, 900 Parts.
+
+==================================================
+MAIN CHARACTER
+==================================================
+
+Main Character adalah unit terkuat dan dapat ditingkatkan maksimal sampai level 5.
+
+Jika Main Character pemain mati atau berhasil dieksekusi:
+- Campaign langsung kalah.
+- Tampilkan Game Over dan pilihan load/restart.
+
+Jika Main Character musuh mati:
+- Faction musuh tereliminasi.
+- Unit tersisa dapat kabur, menyerah, atau menjadi rogue berdasarkan tier.
+- Penghancuran HQ saja tidak mengeliminasi faction jika Main Character masih hidup.
+
+Gunakan downed state:
+- Regular: 30 detik.
+- Special: 45 detik.
+- Main Character: 90 detik.
+- Unit downed tidak dapat menyerang.
+- Ally dapat melakukan revive/stabilize.
+- Eksekusi memerlukan channel 6 detik dan dapat dihentikan.
+
+Upgrade MC:
+- Level 2: $1,000
+- Level 3: $2,000
+- Level 4: $3,500
+- Level 5: $5,500
+
+Total bonus sampai level 5:
+- Maksimal +20% HP.
+- Maksimal +8% weapon damage.
+- Maksimal -15% ability cooldown.
+- Jangan membuat scaling tanpa batas.
+
+MAIN CHARACTER PROFILE:
+
+Juan Bellarosa:
+- Profile ratings dari aset: Firepower 93, Defense 72, Speed 85.
+- Tema: manipulation, strategic genius, assassination, intimidation.
+- Tactical Link: meningkatkan akurasi dan suppression resistance pasukan sekitar.
+- Master Manipulator: bonus Intimidate dan peluang merekrut regular unit yang menyerah.
+- Assassinate: serangan burst kepada satu target, tidak boleh one-hit terhadap MC atau Special.
+- Pasukan reguler Juan mendapat +8 poin accuracy dan respons perintah lebih cepat.
+
+Zie Vartieri:
+- Profile ratings: Firepower 93, Defense 72, Speed 85.
+- Tema: genius, strategic, charismatic, deceptive, ruthless.
+- Vehicle Commander: kendaraan sekitar mendapat handling/turret bonus.
+- Deceptive Assault: temporary flank/accuracy bonus setelah keluar dari fog of war.
+- Unit Vartieri ganas, sedangkan kendaraan merupakan kendaraan faction terbaik.
+- HP kendaraan +20%, speed +12%, turret damage +15%, repair cost -20%.
+
+Andrés A. Násion:
+- Profile ratings: Firepower 74, Defense 72, Speed 85.
+- Main Character paling lemah dalam duel langsung.
+- Tema: manipulation, smart, genius, strategic, public speaking.
+- Command Surge: maksimal 8 unit memperoleh 2× combat output selama 15 detik, cooldown 75 detik. Tidak dapat ditumpuk.
+- Throw Drug Bottle: projectile area yang menghasilkan api sementara dan area denial.
+- Jangan membuat kemampuan ini melukai seluruh squad secara instan tanpa counterplay.
+
+Nabil Verhan:
+- Profile ratings: Firepower 95, Defense 91, Speed 82.
+- Tema: smart, strong, authoritative, calm, immune to manipulation.
+- Tidak dapat dipengaruhi Intimidate atau direkrut.
+- Throw Grenade: explosive area attack dengan telegraph dan cooldown.
+- Discipline Aura: meningkatkan accuracy/morale unit DEA sekitar.
+- Nabil dan unitnya kuat, tetapi jumlah dan ekonomi dibatasi.
+
+==================================================
+SPECIAL UNIT
+==================================================
+
+JUAN — 3 SPECIAL:
+Gunakan nama kanonik dari cerita.
+
+1. Viktor Moreau
+   - Ahli strategi.
+   - Tactical Forecast: sementara memperlihatkan jalur ancaman atau rute musuh yang sudah memiliki intel.
+   - Aura coordination dan cooldown command lebih baik.
+
+2. Elena Varga
+   - Intel dan social infiltration.
+   - Vision tinggi.
+   - Mark Target.
+   - Bonus Intimidate dan peluang memperoleh informasi faction.
+   - Tidak boleh membuka posisi musuh tanpa scouting/intel.
+
+3. Matteo Rizzo
+   - Enforcer/tank.
+   - HP dan suppression resistance tinggi.
+   - Breach dan perlindungan terhadap unit di belakangnya.
+
+ZIE — 3 SPECIAL:
+
+1. Axe Assault
+   - Tidak memerlukan senjata api utama.
+   - Melee damage tinggi.
+   - Evasion aktif ketika bergerak, tetapi dibatasi durasi/cooldown.
+   - Dapat dikalahkan dengan suppression, kendaraan, atau serangan terkoordinasi.
+
+2. Sniper Specialist
+   - Range tinggi.
+   - Accuracy tinggi.
+   - Magazine kecil.
+   - Lemah jika dikepung.
+
+3. Machine Gunner
+   - Suppression tinggi.
+   - HP tinggi.
+   - Membutuhkan banyak amunisi.
+   - Accuracy menurun ketika menembak sambil bergerak.
+
+Triad Synergy:
+- Aktif jika ketiganya hidup dan berada dalam radius 12 meter.
+- Damage +20%.
+- Armor +15%.
+- Suppression resistance +25%.
+- Hilang jika satu unit downed atau terlalu jauh.
+- Ketiganya bersama-sama ditargetkan mampu mengalahkan sekitar 8 B3 dalam simulasi seimbang, tetapi tidak kebal dari ambush, explosive, atau kehabisan amunisi.
+
+ANDRÉS — 3 SPECIAL:
+Jangan memberi nama lore permanen jika nama belum tersedia. Gunakan role title sementara.
+
+1. Shield Guardian
+   - Riot shield.
+   - Directional cover.
+   - Melindungi unit di belakangnya.
+   - Lemah dari serangan flank.
+
+2. Family Strategist
+   - Meningkatkan radius Command Surge.
+   - Mengurangi cooldown ability Andrés.
+   - Memberi information/vision support.
+
+3. Smuggler Chemist
+   - Dapat membawa cargo tambahan.
+   - Meningkatkan nilai/kecepatan produksi pabrik terdekat.
+   - Lebih sulit dideteksi ketika tidak bertempur.
+
+NABIL — 4 SPECIAL:
+
+1. Ghost Operative
+   - Gaya assassin.
+   - Evasion aktif untuk menghindari sebagian peluru.
+   - Tidak kebal; memiliki cooldown dan counter suppression.
+
+2. Shadow Runner
+   - Sangat cepat seperti ninja.
+   - Dash dan close-range takedown.
+   - Armor lebih rendah daripada Special DEA lain.
+
+3. Pursuit Interceptor
+   - Sangat cepat.
+   - Dapat menandai dan mengejar carrier/cartel target.
+   - Bonus terhadap kendaraan yang berhenti atau unit pembawa uang.
+
+4. Armored Bulwark
+   - HP dan armor tertinggi.
+   - Lambat.
+   - Dapat menjadi mobile cover.
+   - Rentan terhadap explosive dan anti-armor.
+
+Target balancing setiap Special Nabil ketika full health, full ammo, dan ability tersedia:
+- Mampu menghadapi sekitar 4 B1; atau
+- 3 B2; atau
+- 2 B3.
+Hasil ini harus diuji melalui simulasi, bukan hanya ditulis.
+
+==================================================
+SENJATA, INVENTORY, DAN AMUNISI
+==================================================
+
+Cartel membeli senjata di Gun Shop.
+
+Setiap unit memiliki:
+- Primary slot.
+- Secondary/melee slot.
+- Grenade/utility slot.
+- Armor slot.
+- Ammo inventory.
+
+Setiap unit harus dipasangkan senjata secara manual satu per satu. UI boleh menyediakan tombol Next Unit, tetapi tidak boleh otomatis mempersenjatai semua unit sekaligus.
+
+Balance awal:
+- Knife: $90
+- Pistol: $250, 12 rounds
+- SMG/compact carbine: $500, 30 rounds
+- Shotgun: $650, 8 shells
+- Assault rifle: $800, 30 rounds
+- Sniper rifle: $1,200, 5 rounds
+- LMG: $1,600, 60 rounds
+- Grenade: $120 sekali pakai
+- Tactical vest: $600
+- RPG/heavy launcher: mulai $2,500 dan ammo sangat mahal
+
+Ammo harus dapat habis.
+Unit tanpa ammo:
+- Mencoba reload jika memiliki magazine.
+- Dapat mundur.
+- Dapat menggunakan secondary/melee.
+- Tidak boleh terus menembak secara palsu.
+
+Nabil membuat senjata di Armory menggunakan Parts:
+- Pistol: 40 Parts
+- SMG: 70
+- Shotgun: 90
+- Assault rifle: 110
+- Sniper: 180
+- LMG: 220
+- Grenade: 30
+
+Armory:
+- Menghasilkan 100 Parts setiap 90 detik.
+- Kapasitas maksimal 1,500.
+- Crafting membutuhkan waktu 5–18 detik tergantung item.
+- Jika DEA HQ/Armory hancur, crafting berhenti sampai diperbaiki.
+
+==================================================
+KENDARAAN
+==================================================
+
+Semua kendaraan memiliki:
+- Seat capacity.
+- Enter/exit.
+- Driver requirement.
+- Passenger state.
+- Fuel tidak perlu digunakan pada MVP awal.
+- HP dan repair.
+- Collision dan pathfinding.
+- Carried cargo/cash jika relevan.
+
+Kelas awal:
+- Compact/Sedan: $1,800, 4 kursi.
+- Armored SUV: $3,500, 6 kursi.
+- Gun Truck: $5,500, 5 kursi + turret.
+- APC: $8,500, 8 kursi + heavy turret.
+
+Kendaraan dengan machine gun dapat menembak sambil bergerak:
+- Moving accuracy penalty: -20 poin.
+- Membutuhkan gunner jika desain kendaraan mengharuskan.
+- Tidak dapat menembus seluruh bangunan tanpa line-of-sight.
+
+Zie memiliki kendaraan terkuat melalui faction modifier, bukan kendaraan yang kebal.
+
+==================================================
+COMBAT DAN COVER
+==================================================
+
+Saat unit dipilih lalu diperintah menyerang musuh:
+- Unit bergerak sampai target masuk range.
+- Mencari line-of-sight.
+- Menembak otomatis.
+- Reload menggunakan ammo.
+- Mengejar hanya dalam leash yang masuk akal.
+- Tidak mengejar sampai ke seluruh map tanpa perintah baru.
+
+Defend Mode:
+- Unit mencari cover terdekat.
+- Kendaraan dapat menjadi cover.
+- Damage dari arah cover berkurang sekitar 35%.
+- Solid building cover dapat mencapai 50%.
+- Cover harus directional.
+- Kendaraan yang dijadikan cover tetap menerima damage.
+- Unit bukan kebal hanya karena berada di belakang mobil.
+
+Tambahkan:
+- Accuracy.
+- Range.
+- Fire rate.
+- Reload.
+- Suppression.
+- Friendly separation.
+- Line-of-sight.
+- Grenade telegraph.
+- Damage feedback.
+- Health bar.
+- Ammo display.
+- Downed/revive.
+- Combat log terbatas.
+
+==================================================
+PATROL
+==================================================
+
+Cartel:
+- Patrol hanya dapat diaktifkan di wilayah sendiri dan sekitar pabrik.
+- Unit otomatis menyerang musuh yang memasuki radius.
+- Unit kembali ke patrol route setelah ancaman hilang.
+- Patrol cartel tidak menghasilkan uang.
+
+Nabil:
+- Dapat melakukan City Patrol di tengah kota.
+- Patrol menghasilkan uang.
+- Unit harus diam/berpatroli minimal 15 detik sebelum income dimulai.
+- Tidak menghasilkan uang saat bertempur, di Bank, atau di Recruitment.
+
+Income dasar Nabil:
+- $110 per unit per 60 detik.
+
+Aturan jarak:
+- Di bawah 8 meter dari patrol DEA lain: unit kedua hanya 50%, berikutnya 25%.
+- Jarak 8–15 meter: masing-masing 80%.
+- Lebih dari 15 meter dan berada di sektor berbeda: 100%.
+- Maksimal 4 unit penghasil uang per sektor.
+- Unit kelima di sektor sama tidak menghasilkan uang.
+- Tampilkan radius dan efisiensi patrol di UI.
+
+==================================================
+PABRIK DAN PENJUALAN
+==================================================
+
+Pabrik cartel:
+
+Level 1:
+- 1 cargo per 45 detik.
+- Nilai dasar $700.
+
+Level 2:
+- Upgrade $1,500.
+- 1 cargo per 38 detik.
+- Quality multiplier 1.15.
+
+Level 3:
+- Upgrade $3,500.
+- 1 cargo per 32 detik.
+- Quality multiplier 1.35.
+
+Level 4:
+- Upgrade $7,000.
+- 1 cargo per 28 detik.
+- Quality multiplier 1.60.
+
+Maksimal dua pabrik aktif per cartel.
+
+Andrés:
+- Mulai dengan Level 2.
+- Nilai penjualan +25%.
+- Produksi 10% lebih cepat.
+
+Juan:
+- Nilai dan kecepatan normal.
+
+Zie:
+- Nilai dasar -5%, tetapi bisa mendapat keuntungan melalui alliance dan kendaraan yang lebih aman/cepat.
+
+Drug Dealer demand:
+- Penjualan pertama: 100%.
+- Kedua: 90%.
+- Ketiga: 75%.
+- Berikutnya: 50%.
+- Demand pulih setelah tidak digunakan sekitar 45 detik.
+- Pemain didorong berganti rute/dealer.
+- Proses penjualan membutuhkan channel 5 detik.
+
+==================================================
+BANK DAN SAFE ZONE
+==================================================
+
+Safe zone:
+1. Bank/ATM.
+2. Recruitment.
+
+Radius awal 18 meter.
+
+Di dalam safe zone:
+- Tidak ada attack.
+- Tidak ada damage.
+- Tidak ada grenade.
+- Tidak ada execution.
+- Tidak ada capture.
+- Senjata diturunkan.
+- Bank dan Recruitment tidak dapat dihancurkan.
+
+Deposit Bank:
+- Channel 6 detik.
+- Dapat dibatalkan pemain.
+- Setelah tersimpan, uang tidak dapat dicuri.
+
+Musuh tidak boleh menunggu tepat di batas safe zone dan menembak tanpa counterplay. Gunakan exit grace period singkat atau beberapa jalur keluar.
+
+==================================================
+DEA RESPONSE DAN HEAT
+==================================================
+
+Kelompok pertempuran dalam radius sekitar 35 meter memiliki Heat Meter.
+
+- Setelah 120 detik kontak senjata berkelanjutan, panggilan DEA aktif.
+- DEA tiba sekitar 60 detik kemudian.
+- DEA datang melalui jalan/map edge/DEA base, bukan spawn di atas kepala pemain.
+- Jika tidak ada tembakan selama 30 detik, Heat menurun.
+- Maksimal dua gelombang per combat cluster.
+- Cooldown cluster sekitar 6 menit.
+
+Gelombang pertama:
+- 4 agent setara B2.
+- 1 commander setara B3.
+- 1 SUV.
+
+Gelombang kedua jika konflik berlanjut:
+- 2 B3.
+- 1 APC.
+
+Pada campaign cartel:
+- DEA merupakan pihak hostile terhadap cartel yang terlibat.
+- DEA tidak otomatis mengetahui semua posisi.
+- DEA menuju laporan lokasi pertempuran.
+
+Pada Campaign Nabil:
+- DEA responder menjadi allied AI yang tidak dikendalikan langsung.
+- Mereka menyerang cartel aktif lalu mengamankan lokasi.
+- Setiap dispatch memakai $300 operational budget.
+- Cooldown minimal 90 detik.
+- Jika budget tidak cukup, dispatch tidak datang.
+- Jangan memberikan bantuan DEA tanpa batas.
+
+==================================================
+INTIMIDATE, DIPLOMASI, DAN ALLIANCE
+==================================================
+
+Jika unit musuh belum hostile atau dalam state neutral encounter, context menu dapat menampilkan:
+- Attack.
+- Intimidate.
+- Observe/Leave.
+
+Intimidate:
+- Memerlukan jarak dekat.
+- Memiliki channel.
+- Dipengaruhi jumlah pasukan, tier, morale, ability Juan/Andrés, dan kekuatan target.
+- Tidak berfungsi pada MC, Special, atau Nabil.
+- Kegagalan dapat meningkatkan hostility.
+
+Jika berhasil:
+- Pemain memperoleh cartel contact.
+- Membuka Diplomacy Panel.
+- Dapat menawarkan alliance sementara.
+
+Alliance:
+- Durasi terbatas dan dapat diperpanjang.
+- Tidak saling menyerang.
+- Dapat memberi trade bonus atau intel terbatas.
+- Tidak memberikan shared victory.
+- Betrayal memberi penalti trust dan hostility.
+- AI mempertimbangkan kebutuhan ekonomi dan ancaman bersama.
+- AI tidak harus menerima alliance.
+
+Musuh tidak otomatis menembak hanya karena bertemu.
+AI menyerang jika:
+- Hubungan hostile.
+- Ada objective strategis.
+- Pemain membawa uang/cargo bernilai tinggi dan AI memiliki intel.
+- Pemain memasuki restricted territory.
+- AI sedang melakukan ambush/raid.
+- Pemain menyerang terlebih dahulu.
+
+==================================================
+SURRENDER DAN RECRUITMENT MUSUH
+==================================================
+
+Hanya Juan dan Andrés yang dapat merekrut regular enemy yang surrender/downed.
+
+- Berlaku untuk B1, B2, dan B3.
+- Tidak berlaku untuk Special.
+- Tidak berlaku untuk Main Character.
+- Tidak berlaku untuk Nabil.
+- Special terus bertempur atau dapat downed lalu dibunuh; tidak menyerah.
+
+Unit yang direkrut dari musuh:
+- Biaya konversi 50% dari harga normal.
+- Kembali dengan 50% HP.
+- Tidak membawa senjata lama.
+- Memerlukan proses di Recruitment.
+- Tetap masuk batas 30 anggota.
+
+Zie dan Nabil tidak dapat merekrut unit musuh dengan mekanisme ini.
+
+==================================================
+AI DAN DIFFICULTY
+==================================================
+
+AI harus menggunakan:
+- Fog of war.
+- Perception.
+- Last known position.
+- Scout/intel.
+- Threat assessment.
+- Utility scoring atau behavior tree.
+- Strategic state dan tactical state terpisah.
+- Resource budget nyata.
+- Recruitment, gaji, weapon, ammo, vehicle, repair, dan factory rules yang sama dengan pemain.
+
+AI tidak boleh:
+- Melihat unit yang belum ditemukan.
+- Membaca carried cash tanpa intel.
+- Mendapat uang/unit dari udara.
+- Mengetahui posisi MC tanpa informasi.
+- Menembak menembus obstacle.
+- Selalu menyerang pemain tanpa kepentingan.
+
+AI harus tahu kapan:
+- Merekrut.
+- Membeli dan memasang senjata.
+- Membeli ammo.
+- Memperbaiki kendaraan.
+- Menjual cargo.
+- Menabung di Bank.
+- Menjaga pabrik.
+- Menggunakan cover.
+- Mundur.
+- Menyerang HQ/pabrik.
+- Menyergap jembatan/rute.
+- Memburu MC.
+- Menunggu atau membangun kekuatan.
+
+Ambush tidak boleh terlalu sering:
+- Memerlukan intel.
+- Memerlukan keuntungan taktis.
+- Gunakan cooldown.
+- AI mempertimbangkan risiko, jarak bantuan, carried cash, dan kekuatan target.
+
+Difficulty tanpa cheating:
+
+EASY:
+- Reaction delay sekitar 2.5 detik.
+- Decision interval sekitar 3 detik.
+- Jarang flank.
+- Menyerang jika mempunyai keunggulan besar.
+- Kurang efektif mengelola economy dan ammo.
+
+MEDIUM:
+- Reaction delay sekitar 1.5 detik.
+- Decision interval sekitar 1.5 detik.
+- Menggunakan scout, cover, retreat, dan ambush sederhana.
+- Mengelola ekonomi secara kompeten.
+
+HARD:
+- Reaction delay minimal sekitar 0.75 detik, tetapi tetap manusiawi.
+- Decision interval sekitar 0.75 detik.
+- Multi-direction attack.
+- Screening, retreat, target priority, bait, dan interception.
+- Tetap tidak memiliki vision, uang, atau unit ilegal.
+
+Faction AI:
+- Juan: formasi, intel, cover, perlindungan MC.
+- Zie: convoy, kendaraan, direct assault, Triad Synergy.
+- Andrés: ekonomi, rute dealer, timing Command Surge.
+- Nabil: city patrol, intel, interception, dan serangan terhadap cartel carrier.
+
+==================================================
+VICTORY DAN DEFEAT
+==================================================
+
+Cartel menang jika semua Main Character faction lawan dieliminasi.
+
+Nabil menang jika:
+- Juan, Zie, dan Andrés dieliminasi.
+- Tidak ada pabrik cartel aktif setelah objective cleanup selesai.
+
+Menghancurkan HQ/pabrik:
+- Menghentikan fungsi fasilitas.
+- Mengganggu recruitment, crafting, produksi, atau response.
+- Memerlukan repair.
+- Tidak langsung membunuh faction selama MC masih hidup.
+
+Jika player MC dieksekusi/mati:
+- Game Over.
+
+==================================================
+ARSITEKTUR
+==================================================
+
+Pisahkan sistem menjadi modul:
+- Campaign/content definitions.
+- Input dan command system.
+- Selection.
+- Camera.
+- Unit simulation.
+- Navigation dan formation.
+- Combat.
+- Weapon/ammo/inventory.
+- Vehicle.
+- Economy.
+- Factory/dealer/bank.
+- Faction/diplomacy.
+- Tactical AI.
+- Strategic AI.
+- Objective/victory.
+- Save/load.
+- UI.
+- Audio/VFX.
+- Debug tools.
+
+Gunakan stable IDs untuk:
+- Faction.
+- Campaign.
+- Unit type.
+- Unit instance.
+- Weapon.
+- Vehicle.
+- Building.
+- Map zone.
+- Upgrade.
+- Mission.
+- Save data.
+
+Save system harus:
+- Memiliki schema version.
+- Mendukung minimal 3 manual slots.
+- Autosave terpisah.
+- Menyimpan posisi, HP, ammo, inventory, kendaraan, uang, factory, diplomacy, AI state penting, difficulty, dan campaign objective.
+- Menangani save rusak tanpa crash.
+
+==================================================
+DOKUMENTASI WAJIB
+==================================================
+
+Buat dan rawat:
+- docs/REPO_AUDIT.md
+- docs/ASSET_MANIFEST.md
+- docs/TECH_DECISIONS.md
+- docs/ARCHITECTURE.md
+- docs/BALANCE.md
+- docs/IMPLEMENTATION_PLAN.md
+- docs/PLACEHOLDER_REGISTER.md
+- docs/TEST_PLAN.md
+- README.md dengan cara menjalankan project.
+
+==================================================
+DEFINITION OF DONE
+==================================================
+
+Sebuah fitur hanya selesai jika:
+- Dapat dijalankan.
+- Tidak memiliki error runtime utama.
+- Memiliki test yang sesuai.
+- Dapat digunakan dari UI.
+- Save/load tidak merusaknya.
+- Tidak hanya berupa tombol mati atau mockup.
+- Sudah diverifikasi dengan gameplay scenario.
+
+Jangan menyebut project production-ready hanya karena berhasil compile.

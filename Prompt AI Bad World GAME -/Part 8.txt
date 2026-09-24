@@ -1,0 +1,58 @@
+Lanjutkan dari MVP 5.
+
+Kerjakan MVP 6: Campaign Presentation dan User Experience.
+
+Implementasikan:
+1. Intro story untuk setiap campaign berdasarkan Story.txt.
+2. Jangan mengubah lore kanonik.
+3. Campaign selection dengan:
+   - portrait
+   - faction
+   - keunggulan
+   - kelemahan
+   - starting units
+   - economy rating
+   - unit cap
+4. Tutorial contextual:
+   - selection
+   - movement
+   - recruitment
+   - equipment
+   - ammo
+   - factory/dealer/bank
+   - vehicle
+   - patrol
+   - defend
+   - Main Character protection
+5. Objective tracker.
+6. Event/alert log.
+7. Unit inspect dan inventory UX.
+8. Payroll warning.
+9. Low ammo warning.
+10. Factory/dealer demand UI.
+11. Patrol efficiency overlay.
+12. Diplomacy UI.
+13. Main Character ability bar.
+14. Minimap dan camera alerts.
+15. Pause/settings.
+16. Volume controls meskipun audio masih placeholder.
+17. Key rebinding.
+18. Autosave dan minimal tiga manual save slots.
+19. Save migration/versioning.
+20. Victory, defeat, restart, dan campaign summary.
+21. Content warning yang sesuai untuk tema kekerasan/kriminal.
+
+Gunakan placeholder audio/VFX jika aset belum ada, tetapi catat semuanya.
+
+Acceptance criteria:
+- Pemain baru dapat memahami loop dasar melalui tutorial.
+- Semua tombol aktif atau secara jelas marked unavailable.
+- Tidak ada tombol mati.
+- Story sesuai file repository.
+- Nama karakter konsisten.
+- Autosave tidak menimpa manual save.
+- Save rusak tidak membuat game crash.
+- UI terbaca pada 1920×1080 dan 1366×768.
+- Test keyboard navigation dan scaling UI.
+
+Verifikasi seluruh flow menu → campaign → gameplay → save/load → victory/defeat, lalu berhenti.

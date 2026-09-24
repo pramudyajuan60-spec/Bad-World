@@ -1,0 +1,37 @@
+Lanjutkan dari MVP 0. Jangan mengerjakan ekonomi lengkap atau empat faction sekaligus.
+
+Kerjakan MVP 1: Juan Bellarosa Core RTS Vertical Slice.
+
+Implementasikan:
+1. Main menu dengan Start, Continue, Settings, Exit.
+2. Campaign selection menampilkan empat campaign, tetapi hanya Campaign Juan yang playable pada MVP ini.
+3. Difficulty selection.
+4. Story/profile panel Juan menggunakan aset repository.
+5. Satu test map 2.5D isometric berdasarkan area Bellarosa.
+6. Spawn Juan + 3 B1.
+7. Fixed-angle RTS camera, pan, zoom, dan map bounds.
+8. Single select, shift-select, box select, double-click select.
+9. Move command, stop, control group, dan formation spacing.
+10. NavigationAgent2D atau sistem navigation Godot yang sesuai.
+11. Obstacle avoidance.
+12. Selection ring, destination marker, health bar, dan unit portrait.
+13. Satu kelompok musuh dummy.
+14. Basic attack-move dan target acquisition.
+15. Pause dan restart.
+16. Minimal save/load posisi unit dan campaign.
+
+Gunakan placeholder gameplay jika concept character belum dapat menjadi sprite animasi. Jangan merusak gambar asli.
+
+Acceptance criteria:
+- Dari menu, pemain dapat memilih Campaign Juan dan masuk map.
+- Juan dan 3 B1 dapat dipilih sendiri atau bersama.
+- Unit dapat bergerak menghindari obstacle.
+- Box selection dan control group berfungsi.
+- Unit tidak menumpuk di titik tujuan.
+- Kamera tidak keluar jauh dari map.
+- Basic enemy dapat diserang.
+- Save, keluar, lalu load mengembalikan posisi.
+- Target 60 FPS pada jumlah unit fase ini.
+- Tambahkan automated tests yang masuk akal.
+
+Verifikasi secara langsung, laporkan hasil, lalu berhenti.

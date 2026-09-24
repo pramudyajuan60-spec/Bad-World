@@ -1,0 +1,314 @@
+The attached image is the strict visual reference for ONE Bad World Main Character or Special Unit.
+
+Create a complete high-resolution pixel-art movement and character-condition animation package for this exact character.
+
+This MAIN CHARACTER OR SPECIAL UNIT:
+
+- can be wounded
+- can enter a downed state
+- can be revived before the timer expires
+- can die permanently
+- NEVER surrenders
+- NEVER kneels to an enemy
+- NEVER drops a weapon as an act of surrender
+- can NEVER be recruited by an enemy faction
+
+Do not generate any surrender animation.
+
+==================================================
+STRICT IDENTITY AND REALISTIC PROPORTIONS
+==================================================
+
+Preserve exactly:
+
+- facial identity
+- skin color
+- apparent age and gender
+- hairstyle and hair color
+- facial hair, glasses, mask, or helmet
+- original height and body build
+- original head size
+- shoulder width
+- torso length
+- arm and leg length
+- clothing
+- armor
+- vest
+- accessories
+- footwear
+- original colors
+- faction identity
+- original silhouette
+
+THIS CHARACTER MUST NEVER BE CHIBI.
+
+Required anatomy:
+
+- approximately 7 to 7.5 heads tall
+- normal adult-sized head
+- realistic adult torso
+- long realistically proportioned arms and legs
+- no oversized head
+- no short legs
+- no compressed body
+- no fat cartoon body
+- no childlike proportions
+- no RPG Maker proportions
+- no miniature toy appearance
+
+The only permitted transformation is converting the source character into detailed, semi-realistic, high-resolution pixel art.
+
+==================================================
+PIXEL-ART STYLE
+==================================================
+
+- authentic hand-crafted pixel clusters
+- crisp hard pixel edges
+- no blur
+- no anti-aliasing
+- no fake pixel filter
+- no smooth digital-painting brush
+- serious mature crime-game style
+- recognizable face, clothing, armor, and silhouette
+- controlled realistic pixel shading
+- no thick cartoon outlines
+
+==================================================
+DIRECTIONS AND FRAME STANDARD
+==================================================
+
+Create every applicable animation in:
+
+1. SE — lower-right, front three-quarter view
+2. SW — lower-left, front three-quarter view
+3. NE — upper-right, back three-quarter view
+4. NW — upper-left, back three-quarter view
+
+Every logical frame:
+
+- 256×384 pixels
+- transparent PNG
+- character visible height approximately 310–350 pixels
+- feet aligned near y = 360
+- pivot approximately (0.5, 0.94)
+- identical scale and baseline
+- full body visible
+- no cropped body parts
+- no environment
+- no floor
+- no permanent shadow
+- no UI
+- no text or watermark
+
+Weapons must remain separate replaceable overlays. Do not permanently merge a weapon into the body.
+
+==================================================
+CORE MOVEMENT
+==================================================
+
+1. IDLE
+- 4 frames per direction
+- subtle natural breathing
+- seamless loop
+
+2. WALK
+- 8 frames per direction
+- complete natural walking cycle
+- realistic arms and legs
+- no sliding feet
+
+3. RUN
+- 8 frames per direction
+- tactical running
+- realistic momentum
+- no exaggerated bouncing
+
+4. CROUCH IDLE
+- 4 frames per direction
+
+5. CROUCH WALK
+- 8 frames per direction
+
+6. GENERIC INTERACTION
+- 6 frames per direction
+- reach forward, interact, and return
+- suitable for Bank, ATM, Gun Shop, Recruitment, Factory, Garage, DEA Armory, or Dealer
+
+==================================================
+DAMAGE AND SUPPRESSION
+==================================================
+
+7. HIT REACTION
+- 4 frames per direction
+- readable impact
+- body reacts naturally
+- no blood or gore
+
+8. SUPPRESSED/DEFENSIVE REACTION
+- 4-frame loop per direction
+- character lowers the profile defensively
+- must not resemble surrender
+- hands remain combat-ready
+
+==================================================
+DOWNED AND REVIVE
+==================================================
+
+9. TRANSITION TO DOWNED
+- 8 frames per direction
+- character loses balance and falls
+- no blood or gore
+
+10. DOWNED IDLE
+- 2-frame loop per direction
+- character is alive but unable to fight
+- subtle breathing
+- remains capable of being revived
+
+11. REVIVE
+- 8 frames per direction
+
+12. STAND AFTER REVIVE
+- 6 frames per direction
+- returns to a determined combat-ready stance
+
+==================================================
+PERMANENT DEATH
+==================================================
+
+13. DEATH FROM STANDING
+- 10 frames per direction
+- strong and readable final fall
+- appropriate for an important Main Character or Special Unit
+- no blood or gore
+- no surrender gesture
+- no hands raised in surrender
+- character attempts to remain combat-ready until the final fall
+
+14. DEATH FROM DOWNED
+- 8 frames per direction
+- transitions from temporary downed into permanent death
+- body becomes completely still
+- no blood or gore
+
+15. EXECUTED/FINISHED FROM DOWNED
+- 6 frames per direction
+- victim remains defiant
+- never begs or surrenders
+- no blood or gore
+- finishes in the same final dead-body state
+
+16. DEAD BODY IDLE
+- 1 final static frame per direction
+- no breathing
+- no movement
+- clearly permanently dead
+
+17. OPTIONAL FINAL DEFEAT POSE
+- 4 frames per direction
+- used only for a Main Character before the Game Over or faction-elimination screen
+- no surrender
+- no kneeling to the enemy
+- serious and dignified defeat presentation
+
+Death must be visually different from temporary downed.
+
+Do not use:
+- fade-out as the only death animation
+- instant disappearance
+- surrender pose
+- kneeling surrender
+- weapon drop as voluntary surrender
+- hands-up pose
+
+==================================================
+PROHIBITED ANIMATIONS
+==================================================
+
+Do not generate:
+
+- surrender
+- hands-up surrender
+- surrender kneel
+- surrender prone
+- voluntarily dropping a weapon
+- surrendered idle
+- recruited stand-up
+- enemy-recruitment animation
+- begging animation
+- fearful submission animation
+
+Main Characters and Special Units fight until downed, revived, or permanently killed.
+
+==================================================
+STATE CLARITY
+==================================================
+
+DOWNED:
+- alive
+- temporary
+- can be revived
+- subtle breathing
+
+DEAD:
+- completely still
+- no breathing
+- permanent
+- cannot be revived
+- cannot be recruited
+
+The defensive/suppressed animation must not resemble surrender.
+
+==================================================
+OUTPUT
+==================================================
+
+Create separate horizontal strips:
+
+- character_idle_SE/SW/NE/NW
+- character_walk_SE/SW/NE/NW
+- character_run_SE/SW/NE/NW
+- character_crouch_idle_SE/SW/NE/NW
+- character_crouch_walk_SE/SW/NE/NW
+- character_interact_SE/SW/NE/NW
+- character_hit_SE/SW/NE/NW
+- character_defensive_SE/SW/NE/NW
+- character_downed_SE/SW/NE/NW
+- character_downed_idle_SE/SW/NE/NW
+- character_revive_SE/SW/NE/NW
+- character_stand_after_revive_SE/SW/NE/NW
+- character_death_standing_SE/SW/NE/NW
+- character_death_from_downed_SE/SW/NE/NW
+- character_executed_SE/SW/NE/NW
+- character_dead_idle_SE/SW/NE/NW
+- character_final_defeat_SE/SW/NE/NW
+
+Frames must be chronological from left to right.
+
+==================================================
+QUALITY CONTROL
+==================================================
+
+Reject and regenerate any result where:
+
+- character becomes chibi
+- head becomes oversized
+- body becomes shorter, wider, or fatter
+- identity changes
+- clothing changes
+- anatomy is malformed
+- limbs disappear or multiply
+- feet slide
+- baseline changes
+- animation is only a moving static image
+- downed and dead states look identical
+- dead body continues breathing
+- any surrender gesture appears
+- character raises hands in submission
+- character kneels voluntarily
+- sprite becomes blurry
+- frame is cropped
+
+NEGATIVE PROMPT:
+
+chibi, super-deformed, kawaii, bobblehead, oversized head, short body, short legs, compressed torso, fat cartoon body, child proportions, RPG Maker sprite, toy figure, generic soldier, different face, changing clothing, blurry pixels, anti-aliased edges, fake pixel filter, extra limbs, malformed anatomy, floating feet, sliding feet, cropped body, surrender, hands up, surrender kneeling, surrendered prone, begging, voluntary submission, recruited enemy animation, blood, gore, environment, floor, UI, text, watermark

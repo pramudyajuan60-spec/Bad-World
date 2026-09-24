@@ -1,0 +1,46 @@
+Lanjutkan dari MVP 1.
+
+Kerjakan MVP 2: Combat dan Unit Management.
+
+Implementasikan:
+1. Combat lengkap berbasis weapon data:
+   - accuracy
+   - range
+   - rate of fire
+   - reload
+   - magazine
+   - reserve ammo
+   - line-of-sight
+   - projectile/hitscan sesuai weapon
+2. Attack command dan attack-move.
+3. Defend/Cover Mode.
+4. Kendaraan/obstacle sebagai directional cover.
+5. Suppression dan retreat sederhana.
+6. Downed, revive, dan execution.
+7. Recruitment building.
+8. B1, B2, B3, dan locked Special.
+9. Recruitment timer, harga, gaji, unit cap.
+10. Gun Shop.
+11. Inventory manual per unit.
+12. Senjata, grenade, armor, dan ammo.
+13. Reload dan out-of-ammo behavior.
+14. Unit inspect panel.
+15. Payroll timer, morale, dan warning gaji.
+16. Safe zone Bank dan Recruitment.
+17. Juan dapat merekrut regular enemy yang menyerah/downed.
+18. Special/MC tidak dapat direkrut.
+19. Friendly fire terbatas untuk explosive jika sesuai desain, tetapi beri warning.
+
+Acceptance criteria:
+- Unit baru membutuhkan uang dan waktu.
+- Senjata harus dipasang manual kepada unit.
+- Ammo benar-benar berkurang.
+- Unit tanpa ammo tidak menembak tanpa batas.
+- Cover hanya melindungi dari arah yang benar.
+- Unit downed dapat diselamatkan atau dieksekusi.
+- Safe zone menolak attack dan grenade.
+- Payroll memengaruhi morale.
+- Unit cap tidak dapat dilewati.
+- Save/load menyimpan inventory, ammo, HP, downed state, dan payroll.
+
+Buat combat scenario tests dan berhenti setelah laporan MVP 2.

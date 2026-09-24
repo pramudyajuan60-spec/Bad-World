@@ -1,0 +1,68 @@
+Lanjutkan dari MVP 3.
+
+Kerjakan MVP 4: Four Asymmetric Campaigns.
+
+Aktifkan seluruh campaign:
+- Campaign Juan
+- Campaign Fauzi
+- Campaign Atha
+- Campaign Nabil
+
+Implementasikan data dan gameplay faction-specific:
+
+JUAN:
+- Spawn Juan + 3 B1.
+- Regular unit accuracy/command bonus.
+- Tactical Link.
+- Master Manipulator.
+- Assassinate yang memiliki counterplay.
+- Viktor Moreau, Elena Varga, Matteo Rizzo.
+- Rekrut regular enemy yang menyerah.
+
+ZIE:
+- Spawn Zie + 3 B1.
+- Kendaraan terbaik.
+- Vehicle Commander.
+- Deceptive Assault.
+- Axe Assault, Sniper Specialist, Machine Gunner.
+- Triad Synergy.
+- Uji bahwa ketiganya bersama sangat kuat tetapi tidak kebal.
+
+ANDRÉS:
+- Spawn Andrés + 3 B1.
+- B1 lebih lemah.
+- Ekonomi tercepat.
+- Pabrik awal Level 2.
+- Command Surge 2× sesuai batas.
+- Throw Drug Bottle.
+- Shield Guardian, Family Strategist, Smuggler Chemist.
+- Dapat merekrut regular enemy yang menyerah.
+
+NABIL:
+- Spawn Nabil + 3 B2.
+- Tidak ada B1.
+- Total maksimal 24 anggota + Nabil.
+- DEA Armory dan Parts.
+- City Patrol income dengan distance efficiency.
+- Loot sebagian carried cash cartel.
+- Throw Grenade dan Discipline Aura.
+- Ghost Operative, Shadow Runner, Pursuit Interceptor, Armored Bulwark.
+- DEA response menjadi allied AI beranggaran/cooldown.
+- Tidak dapat merekrut musuh.
+
+Tambahkan Main Character upgrade sampai level 5.
+
+Acceptance criteria:
+- Semua campaign dapat dimulai dari menu.
+- Spawn, resource, unit cap, roster, dan faction bonus berbeda.
+- Atha dan Fauzi tetap menjadi nama campaign di menu.
+- Nama karakter/faction resmi sesuai Prompt Dasar.
+- Nabil tidak dapat merekrut B1.
+- Nabil maksimal 24 anggota di luar dirinya.
+- Campaign lain maksimal 30 anggota di luar MC.
+- Special unlock dan harga berfungsi.
+- Ability mempunyai cooldown, feedback, dan counterplay.
+- Save/load bekerja untuk semua faction.
+- Buat balance simulation untuk special unit dan ability.
+
+Laporkan hasil per faction dan berhenti.

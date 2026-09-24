@@ -1,0 +1,36 @@
+Lanjutkan menggunakan seluruh aturan Prompt Dasar Bad World.
+
+Kerjakan hanya MVP 0: Repository Audit dan Godot Bootstrap.
+
+Tugas:
+1. Clone/checkout commit yang ditentukan dan konfirmasi SHA.
+2. Baca seluruh Story.txt.
+3. Inventaris seluruh aset, format, dimensi, faction, dan kegunaannya.
+4. Catat mismatch nama dan aset yang kurang.
+5. Buat Godot 4.x project yang dapat dibuka tanpa error.
+6. Buat struktur direktori yang bersih.
+7. Buat typed data definitions awal untuk:
+   - Campaign
+   - Faction
+   - Unit
+   - Weapon
+   - Vehicle
+   - Building
+   - Upgrade
+   - Difficulty
+8. Masukkan data dasar empat campaign.
+9. Buat automated asset-manifest validation.
+10. Buat placeholder policy.
+11. Jangan membuat full gameplay dalam fase ini.
+
+Acceptance criteria:
+- project.godot dapat dibuka.
+- Main scene kosong/minimal dapat dijalankan.
+- Tidak ada missing script/resource error.
+- Empat campaign dapat dimuat dari data.
+- Asset manifest dapat divalidasi.
+- Seluruh dokumen dasar dibuat.
+- Jelaskan engine version yang dipakai.
+- Jalankan headless startup check jika tooling memungkinkan.
+
+Setelah selesai, tampilkan laporan MVP 0 dan berhenti.

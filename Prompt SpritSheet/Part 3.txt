@@ -1,0 +1,81 @@
+Using the approved character design, generate COMPLETE MELEE, THROWABLE, COVER, AND BASIC ABILITY ANIMATIONS.
+
+Create applicable animations in SE, SW, NE, and NW.
+
+MELEE:
+
+1. KNIFE STAB
+- 8 frames
+- anticipation, thrust, contact, retract, recovery
+
+2. KNIFE SLASH
+- 8 frames
+
+3. SPEAR THRUST
+- 8 frames
+
+4. AXE ATTACK
+- 10 frames
+- readable heavy swing and recovery
+
+5. BATON/STRIKING-IRON ATTACK
+- 8 frames
+
+THROWABLE:
+
+6. GRENADE THROW
+- 8 frames
+- prepare, aim, throw, release, recovery
+- same body animation supports hand grenade, smoke grenade, and flash grenade
+
+COVER:
+
+Do not draw the wall, vehicle, or cover object.
+
+7. ENTER COVER LEFT
+- 5 frames
+
+8. ENTER COVER RIGHT
+- 5 frames
+
+9. COVER IDLE
+- 2-frame loop
+
+10. COVER PEEK LEFT
+- 4 frames
+
+11. COVER PEEK RIGHT
+- 4 frames
+
+12. COVER FIRE HANDGUN
+- 6 frames
+
+13. COVER FIRE RIFLE
+- 6 frames
+
+14. EXIT COVER LEFT
+- 5 frames
+
+15. EXIT COVER RIGHT
+- 5 frames
+
+SOCIAL/COMMAND:
+
+16. INTIMIDATE OR COMMAND
+- 6 frames
+- firm tactical gesture
+- suitable for intimidate, alliance, patrol command, or defend command
+
+SIGNATURE ACTION:
+
+17. SIGNATURE ACTION
+- 8–10 frames
+- base the movement on the character’s visible role, equipment, or supplied ability description
+- do not invent supernatural powers
+- do not bake permanent VFX into the body
+
+BODY AND EQUIPMENT MUST REMAIN SEPARATE:
+- melee weapon overlay separate
+- grenade overlay separate
+- firearm overlay separate
+- no permanent effect baked into body

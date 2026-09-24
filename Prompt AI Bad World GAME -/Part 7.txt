@@ -1,0 +1,86 @@
+Lanjutkan dari MVP 4.
+
+Kerjakan MVP 5: Intelligent AI dan Diplomacy.
+
+Implementasikan AI berlapis:
+
+TACTICAL:
+- Move dan formation.
+- Target priority.
+- Cover.
+- Reload.
+- Suppression.
+- Flank.
+- Retreat.
+- Revive.
+- Grenade avoidance.
+- Vehicle entry/exit.
+- Protect Main Character.
+
+STRATEGIC:
+- Mengatur recruitment.
+- Membayar gaji.
+- Membeli weapon/ammo.
+- Meng-upgrade pabrik.
+- Memilih dealer.
+- Menyimpan uang ke Bank.
+- Membeli dan memperbaiki kendaraan.
+- Mempertahankan HQ/pabrik.
+- Raid.
+- Ambush.
+- Menyerang rute ekonomi.
+- Menentukan kapan menyerang MC.
+- Menentukan kapan menunggu.
+
+INFORMATION:
+- Fog of war.
+- Scout.
+- Last known position.
+- Threat memory.
+- Intel events.
+- AI tidak omniscient.
+
+AMBUSH:
+- Dapat dilakukan di jembatan, gang, dealer route, atau jalan sempit.
+- Memerlukan intel dan tactical advantage.
+- Tidak dilakukan terlalu sering.
+- Tambahkan cooldown dan utility threshold.
+- AI dapat membatalkan ambush jika situasi berubah.
+
+DIPLOMACY:
+- Neutral encounter.
+- Attack atau Intimidate.
+- Memperoleh cartel contact.
+- Diplomacy Panel.
+- Alliance sementara.
+- Trade benefit.
+- Trust.
+- Betrayal.
+- Tidak ada shared victory.
+
+DIFFICULTY:
+- Easy, Medium, Hard sesuai Prompt Dasar.
+- Difficulty meningkatkan kualitas keputusan, bukan memberi uang/vision ilegal.
+
+Buat debug overlay yang dapat menampilkan:
+- AI current state.
+- Current objective.
+- Known enemy positions.
+- Utility score.
+- Economy budget.
+- Reason memilih attack/retreat.
+Debug overlay tidak muncul pada release build.
+
+Acceptance criteria:
+- AI dapat menyelesaikan economy loop sendiri.
+- AI tidak terus menyerang tanpa alasan.
+- AI dapat membeli ammo ketika menipis.
+- AI dapat mundur dari perang yang buruk.
+- AI dapat menyergap berdasarkan intel.
+- Hard lebih cerdas dari Medium, bukan curang.
+- AI tidak menyerang faction neutral otomatis.
+- Alliance dan betrayal memiliki konsekuensi.
+- Headless simulation dapat berjalan untuk beberapa match.
+- Laporkan hasil win-rate awal per faction/difficulty.
+
+Setelah verifikasi, berhenti.

@@ -1,0 +1,63 @@
+The attached image is the strict visual reference for ONE Bad World character.
+
+Create high-resolution, realistically proportioned pixel-art animation assets for this exact character.
+
+PRESERVE EXACTLY:
+- face and skin color
+- apparent age and gender
+- hairstyle and hair color
+- original body build and height
+- original head size
+- realistic adult proportions
+- clothing, armor, accessories, and footwear
+- original colors and silhouette
+
+THIS CHARACTER MUST NEVER BE CHIBI.
+
+Required anatomy:
+- approximately 7 to 7.5 heads tall
+- normal adult-sized head
+- realistic torso
+- long realistically proportioned arms and legs
+- no oversized head
+- no short body
+- no compressed torso
+- no fat cartoon proportions
+- no childlike proportions
+- no RPG Maker appearance
+
+STYLE:
+- detailed semi-realistic pixel art
+- authentic crisp pixel clusters
+- no blur
+- no anti-aliasing
+- no fake pixel filter
+- serious mature crime-game style
+- recognizable face, outfit, and silhouette
+
+DIRECTIONS:
+- SE: lower-right, front three-quarter view
+- SW: lower-left, front three-quarter view
+- NE: upper-right, back three-quarter view
+- NW: upper-left, back three-quarter view
+
+FRAME:
+- 256×384 pixels per logical frame
+- transparent PNG
+- character height approximately 310–350 pixels
+- feet aligned near y = 360
+- pivot approximately (0.5, 0.94)
+- identical scale and baseline
+- full body visible
+- no environment, floor, UI, text, or watermark
+
+MODULAR EQUIPMENT:
+- character body and weapons must be separate layers
+- do not permanently bake weapons into the body
+- body poses must support replaceable weapon overlays
+- all weapon overlays must align with the hands and character pivot
+
+Every animation must contain real arm, leg, and body movement. Do not fake animation by translating, scaling, rotating, or vertically bobbing one static image.
+
+NEGATIVE PROMPT:
+chibi, super-deformed, kawaii, bobblehead, oversized head, short legs, compressed body, fat cartoon body, child proportions, RPG Maker sprite, generic mobile-game soldier, different face, changing costume, wrong colors, blurry pixels, anti-aliased edges, fake pixel filter, extra limbs, broken hands, malformed anatomy, floating feet, sliding feet, changing baseline, cropped body, environment, floor, UI, text, watermark
