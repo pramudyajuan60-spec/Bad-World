@@ -1,0 +1,16 @@
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Godot 4 cache (no project scaffold yet; ignore caches when it lands)
+.godot/
+*.log
+
+# Python helper artifacts
+__pycache__/
