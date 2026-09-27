@@ -12,6 +12,15 @@ extends Node2D
 ##   Right click ground    move (with formation spacing)
 ##   Right click enemy     attack
 ##   A, then right click   attack-move (one-shot "armed" mode)
+##
+## MVP2 additions:
+##   D                     Defend/Cover Mode (move to nearest cover, hold)
+##   G, then right click   throw grenade at that ground position
+##   R, then right click a downed enemy   recruit instead of execute
+##                         (only takes effect if the Main Character is
+##                         among the selected units)
+##   Right click a downed ally    revive
+##   Right click a downed enemy   execute (default) or recruit (armed)
 ##   S                     stop
 ##   Ctrl+1..9             assign control group
 ##   1..9                  recall control group
@@ -31,6 +40,8 @@ var enemy_units: Array = []
 var _box_start: Vector2 = Vector2.ZERO
 var _box_dragging: bool = false
 var _attack_move_armed: bool = false
+var _grenade_armed: bool = false
+var _recruit_armed: bool = false
 
 const CLICK_VS_DRAG_THRESHOLD := 8.0
 const SELECT_PICK_RADIUS := 18.0
@@ -101,11 +112,35 @@ func _handle_double_click(pos: Vector2) -> void:
 func _handle_right_click(pos: Vector2) -> void:
 	if selection_manager.selected.is_empty():
 		return
-	var enemy := _find_nearest_in(pos, enemy_units, ATTACK_PICK_RADIUS)
 	var selected: Array = selection_manager.selected
+	var enemy := _find_nearest_in(pos, enemy_units, ATTACK_PICK_RADIUS)
 	if enemy:
+		if enemy.state == BwUnit.State.DOWNED:
+			if _recruit_armed and _selection_has_main_character(selected) and enemy.is_recruitable_tier:
+				for u in selected:
+					u.order_recruit_downed(enemy)
+			else:
+				for u in selected:
+					u.order_execute(enemy)
+		else:
+			for u in selected:
+				u.order_attack(enemy)
+		_attack_move_armed = false
+		_grenade_armed = false
+		_recruit_armed = false
+		return
+	var downed_ally := _find_downed_ally(pos, selected)
+	if downed_ally:
 		for u in selected:
-			u.order_attack(enemy)
+			u.order_revive(downed_ally)
+		_attack_move_armed = false
+		_grenade_armed = false
+		_recruit_armed = false
+		return
+	if _grenade_armed:
+		for u in selected:
+			u.order_use_grenade(pos)
+		_spawn_destination_marker(pos)
 	else:
 		var positions := FormationUtils.compute_positions(pos, selected.size(), 40.0)
 		for i in range(selected.size()):
@@ -116,6 +151,28 @@ func _handle_right_click(pos: Vector2) -> void:
 				u.order_move(positions[i])
 		_spawn_destination_marker(pos)
 	_attack_move_armed = false
+	_grenade_armed = false
+	_recruit_armed = false
+
+
+func _selection_has_main_character(selected: Array) -> bool:
+	for u in selected:
+		if is_instance_valid(u) and u.tier_label == "MC":
+			return true
+	return false
+
+
+func _find_downed_ally(pos: Vector2, selected: Array) -> BwUnit:
+	var nearest: BwUnit = null
+	var nearest_dist := SELECT_PICK_RADIUS
+	for u in selection_manager.player_units:
+		if not is_instance_valid(u) or u.state != BwUnit.State.DOWNED or u in selected:
+			continue
+		var d: float = pos.distance_to(u.global_position)
+		if d <= nearest_dist:
+			nearest_dist = d
+			nearest = u
+	return nearest
 
 
 func _handle_key(event: InputEventKey) -> void:
@@ -125,6 +182,13 @@ func _handle_key(event: InputEventKey) -> void:
 				u.order_stop()
 		KEY_A:
 			_attack_move_armed = true
+		KEY_D:
+			for u in selection_manager.selected:
+				u.order_defend()
+		KEY_G:
+			_grenade_armed = true
+		KEY_R:
+			_recruit_armed = true
 		KEY_ESCAPE:
 			pause_requested.emit()
 		_:

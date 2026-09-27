@@ -150,3 +150,45 @@ are MVP 5.)
   (requires MVP 5+ AI/vehicle simulation tooling).
 - Each Nabil Special at full health/ammo/ability should be able to handle
   ~4×B1, or ~3×B2, or ~2×B3 — same caveat, **not yet simulated**.
+
+## MVP 2 weapon combat numbers (assumption, not in Prompt Dasar)
+
+Prompt Dasar's BALANCE V0.1 only specifies weapon **price/magazine/
+reserve** (table above). Rate of fire, reload time, range, and damage
+are MVP2 game-design values, chosen for a working combat feel and
+documented here so later balancing has a starting point to adjust
+rather than re-deriving from scratch:
+
+| Weapon | Damage | RPM | Reload | Range (px) | Hitscan | Explosive |
+|---|---|---|---|---|---|---|
+| Knife | 35 | 90 | – | 40 | yes | no |
+| Pistol | 18 | 200 | 1.8s | 260 | yes | no |
+| SMG | 14 | 700 | 2.2s | 300 | yes | no |
+| Shotgun | 45 | 70 | 3.0s | 160 | yes | no |
+| Assault Rifle | 22 | 600 | 2.4s | 380 | yes | no |
+| Sniper Rifle | 85 | 40 | 3.2s | 640 | yes | no |
+| LMG | 20 | 650 | 4.5s | 400 | yes | no |
+| Grenade | 70 | 30 | – | 220 (throw) | no | yes, radius 90px |
+| RPG | 140 | 25 | 4.0s | 500 | no (500px/s travel) | yes, radius 140px |
+| Tactical Vest | – | – | – | – | n/a | 15% flat damage reduction (armor slot) |
+
+Shotgun pellet-spread is not separately modeled; its higher flat damage
+stands in for a multi-pellet hit. Revisit both when MVP7's balance pass
+runs real combat simulations.
+
+## MVP 2 assumption durations (channels, timers, cover, friendly fire)
+
+Not specified numerically by Prompt Dasar beyond what's noted:
+
+- Recruitment timer: B1 8s, B2 12s, B3 18s (scales with tier).
+- Revive channel: 4s, must stay within ~50px of the downed ally.
+- Recruit-downed-enemy channel: 4s (same range rule as revive).
+- Execution channel: **6s, explicit in Prompt Dasar base rules**, not
+  an assumption.
+- Cover damage reduction: 35% flat when the attacker is on the blocked
+  side (Prompt Dasar's "sekitar 35%" for vehicle/obstacle cover).
+- Suppression: +25 per hit, decays 15/s, up to -40 accuracy points at
+  100 suppression, retreat triggers at 70+ while actively attacking.
+- Friendly fire from explosives: 50% of the equivalent hostile-side
+  damage ("terbatas" = limited, per Prompt Dasar), always logged as a
+  warning.

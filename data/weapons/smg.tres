@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"weapon_smg"
+display_name = "SMG"
+category = 2
+price = 500
+magazine_size = 30
+reserve_ammo = 90
+damage = 14.0
+rate_of_fire_rpm = 700
+reload_time_sec = 2.2
+range_px = 300.0
+is_hitscan = true
+projectile_speed_px = 0.0
+is_melee = false
+uses_ammo = true
+is_explosive = false
+blast_radius_px = 0.0
+armor_damage_reduction = 0.0

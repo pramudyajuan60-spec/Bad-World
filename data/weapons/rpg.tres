@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"weapon_rpg"
+display_name = "RPG/Heavy Launcher"
+category = 7
+price = 2500
+magazine_size = 1
+reserve_ammo = 3
+damage = 140.0
+rate_of_fire_rpm = 25
+reload_time_sec = 4.0
+range_px = 500.0
+is_hitscan = false
+projectile_speed_px = 500.0
+is_melee = false
+uses_ammo = true
+is_explosive = true
+blast_radius_px = 140.0
+armor_damage_reduction = 0.0

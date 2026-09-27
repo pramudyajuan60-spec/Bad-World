@@ -27,6 +27,9 @@
 | PLACEHOLDER_health_bar | Themed health-bar UI sprite | Active (MVP 1) | No | `scripts/gameplay/health_bar.gd` draws two flat-color rects via `_draw()`. |
 | PLACEHOLDER_destination_marker | Themed move-order marker VFX | Active (MVP 1) | No | `scripts/gameplay/destination_marker.gd` draws a plain X-in-circle, auto-frees after ~0.9s. |
 | PLACEHOLDER_dummy_enemy_squad | A real hostile faction encounter | Active (MVP 1) | No | `bellarosa_test_map.gd` spawns 4 units named "Hostile (PLACEHOLDER)", faction_side `enemy_dummy`, with no faction identity, art, or AI beyond firing back if approached. Exists purely so MVP 1's "basic attack-move and target acquisition" criterion is testable. Replace with a real faction encounter once MVP 4/5 AI exists. |
+| PLACEHOLDER_hud_panels | Themed Recruitment/Gun Shop/Inspect building UI | Active (MVP 2) | No | `scripts/ui/recruitment_panel.gd`, `gun_shop_panel.gd`, `inspect_panel.gd` are built entirely from generic `Button`/`Label` controls in code, not themed art or a `.tscn` layout. Functionally complete and tested; MVP 6 replaces the visuals. |
+| PLACEHOLDER_building_interaction | In-world walk-up building interaction | Active (MVP 2) | No | Recruitment/Gun Shop/Bank are opened via always-visible HUD buttons, not by clicking a building placed in the world (no real buildings exist on this test map yet). Deferred until MVP 3 places actual buildings from `Assets/Game Maps/` in the open world. |
+| PLACEHOLDER_explosive_projectile_flight | Visible grenade/RPG flight arc | Active (MVP 2) | No | `WeaponData.is_hitscan = false` triggers a timed delay (distance / projectile speed) before the AoE applies, with no moving visual node — see docs/TECH_DECISIONS.md. The *mechanical* hitscan-vs-projectile distinction is real and tested; only the visual flight is deferred. |
 
 The gaps below are **known asset shortages** (not created as placeholder
 files yet, since no gameplay currently needs them), tracked here so the

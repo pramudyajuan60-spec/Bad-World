@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"weapon_grenade"
+display_name = "Hand Grenade"
+category = 8
+price = 120
+magazine_size = 1
+reserve_ammo = 0
+damage = 70.0
+rate_of_fire_rpm = 30
+reload_time_sec = 0.0
+range_px = 220.0
+is_hitscan = false
+projectile_speed_px = 260.0
+is_melee = false
+uses_ammo = true
+is_explosive = true
+blast_radius_px = 90.0
+armor_damage_reduction = 0.0

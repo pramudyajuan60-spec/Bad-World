@@ -7,11 +7,13 @@ incrementally through a sequence of MVPs defined in
 `Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
 `Part 9.txt` (MVP 7, release candidate).
 
-**Current status: MVP 1 — Juan Bellarosa Core RTS Vertical Slice.**
+**Current status: MVP 2 — Combat and Unit Management.**
 Main menu → campaign/difficulty select → story panel → one playable
-isometric test map (Juan + 3×B1 vs. a dummy enemy squad). See
-docs/IMPLEMENTATION_PLAN.md for the full roadmap and what each MVP
-delivered.
+isometric test map with real weapon-data combat (ammo, reload,
+line-of-sight), Defend/Cover Mode, suppression/retreat, downed/revive/
+execution, Recruitment + Gun Shop + Inspect panels, payroll, and safe
+zones. See docs/IMPLEMENTATION_PLAN.md for the full roadmap and what
+each MVP delivered.
 
 ## Controls (MVP 1 gameplay)
 
@@ -19,9 +21,20 @@ delivered.
   Drag: box select. Double-click: select all visible units of that tier.
 - Right click ground: move (formation-spaced). Right click enemy: attack.
 - `A` then right click: attack-move. `S`: stop.
+- `D`: Defend/Cover Mode (moves to nearest cover, takes reduced damage
+  from the blocked direction only).
+- `G` then right click: throw the equipped grenade at that position.
+- `R` then right click a downed enemy (with the Main Character
+  selected): recruit instead of execute.
+- Right click a downed ally: revive. Right click a downed enemy:
+  execute (default) or recruit (with `R` armed, see above).
 - `Ctrl`+1‑9: assign control group. 1‑9: recall control group.
 - Arrow keys / mouse near screen edge: pan camera. Mouse wheel: zoom.
 - `Escape`: pause menu (resume / restart / save / load / quit to menu).
+- HUD buttons (top-right): **Recruitment** (hire B1/B2/B3, Special
+  locked), **Gun Shop** (buy weapons/armor into a shared pool),
+  **Inspect** (view the selected unit and manually assign purchased
+  equipment — nothing auto-equips).
 
 ## Running the project
 

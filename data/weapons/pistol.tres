@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"weapon_pistol"
+display_name = "Standard Pistol"
+category = 1
+price = 250
+magazine_size = 12
+reserve_ammo = 48
+damage = 18.0
+rate_of_fire_rpm = 200
+reload_time_sec = 1.8
+range_px = 260.0
+is_hitscan = true
+projectile_speed_px = 0.0
+is_melee = false
+uses_ammo = true
+is_explosive = false
+blast_radius_px = 0.0
+armor_damage_reduction = 0.0
