@@ -7,15 +7,17 @@ incrementally through a sequence of MVPs defined in
 `Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
 `Part 9.txt` (MVP 7, release candidate).
 
-**Current status: MVP 2 — Combat and Unit Management.**
-Main menu → campaign/difficulty select → story panel → one playable
-isometric test map with real weapon-data combat (ammo, reload,
-line-of-sight), Defend/Cover Mode, suppression/retreat, downed/revive/
-execution, Recruitment + Gun Shop + Inspect panels, payroll, and safe
-zones. See docs/IMPLEMENTATION_PLAN.md for the full roadmap and what
-each MVP delivered.
+**Current status: MVP 3 — Open-World Economy and Vehicle Loop.**
+Main menu → campaign/difficulty select → story panel → a connected
+open world (Bellarosa/DEA/Nasion/Vartieri HQs + Central City) with a
+full Factory → cargo → Drug Dealer → carried cash → Bank economy loop,
+4 vehicle classes with seats/enter-exit/turrets, cartel Patrol Mode,
+a Heat Meter + DEA response, and a destructible/repairable factory —
+on top of MVP1/2's RTS controls and weapon-data combat. See
+docs/IMPLEMENTATION_PLAN.md for the full roadmap and what each MVP
+delivered.
 
-## Controls (MVP 1 gameplay)
+## Controls (gameplay)
 
 - Left click: select one unit. Shift+click: add/remove from selection.
   Drag: box select. Double-click: select all visible units of that tier.
@@ -28,13 +30,22 @@ each MVP delivered.
   selected): recruit instead of execute.
 - Right click a downed ally: revive. Right click a downed enemy:
   execute (default) or recruit (with `R` armed, see above).
+- `P` then right click: Patrol Mode (walks a loop between the current
+  position and the clicked point, auto-engaging intruders).
+- Right click your own vehicle (with a free seat): selected units walk
+  over and board it (first arrival drives). `X`: exit a mounted vehicle.
+- `E`: interact with whatever building/vehicle the selected unit is
+  standing at (pick up factory cargo, sell to a dealer, deposit at the
+  Bank, repair at the Garage, or open the Recruitment/Gun Shop panel).
 - `Ctrl`+1‑9: assign control group. 1‑9: recall control group.
 - Arrow keys / mouse near screen edge: pan camera. Mouse wheel: zoom.
 - `Escape`: pause menu (resume / restart / save / load / quit to menu).
-- HUD buttons (top-right): **Recruitment** (hire B1/B2/B3, Special
-  locked), **Gun Shop** (buy weapons/armor into a shared pool),
-  **Inspect** (view the selected unit and manually assign purchased
-  equipment — nothing auto-equips).
+- HUD buttons (top-right): **Inspect** (view the selected unit and
+  manually assign purchased equipment — nothing auto-equips) and
+  **Alerts** (recent combat/economy log). Recruitment and Gun Shop are
+  now real in-world buildings in Central City (walk up + `E`), not
+  always-visible buttons.
+- A minimap (bottom-right) shows unit/building positions.
 
 ## Running the project
 

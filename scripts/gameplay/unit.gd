@@ -19,10 +19,15 @@ signal selection_changed(unit, is_selected)
 signal downed(unit)
 signal revived(unit)
 signal recruit_completed(recruiter, target)
+## Emitted the instant a carrying unit goes down, so the owning scene can
+## spawn a world-pickup for the lost cargo/cash (see cash_drop.gd). Not
+## emitted if the unit was carrying nothing.
+signal loot_dropped(position: Vector2, cargo: int, cash: int)
 
 enum State {
 	IDLE, MOVING, ATTACK_MOVING, ATTACKING, DEFENDING, MOVING_TO_COVER,
 	DOWNED, REVIVING, EXECUTING, RECRUITING, RETREATING, DEAD,
+	INTERACTING, PATROLLING,
 }
 
 ## -------------------------------------------------------------------
@@ -67,6 +72,21 @@ const DOWNED_DURATION_MC := 90.0
 ## left null in isolated tests where safe zones are irrelevant.
 var economy: Node = null
 
+## MVP3: when set, this unit is riding inside a Vehicle. Movement/combat
+## orders directed at this unit while mounted are redirected to the
+## vehicle by CommandController instead (see command_controller.gd); the
+## unit itself is hidden and its own physics processing is paused for as
+## long as it stays mounted.
+var mounted_vehicle: Node = null
+var is_driver: bool = false
+## MVP3 carried cargo/cash (Prompt Dasar "Carried cash terpisah dari
+## bank balance"). A carrier's cargo/cash is only "safe" once deposited
+## with CampaignEconomy at a Bank; losing the carrier before that drops
+## it as a lootable world pickup (see cash_drop.gd).
+var carried_cargo: int = 0
+var carried_cash: int = 0
+const CARGO_CAPACITY := 2
+
 @export var max_hp: float = 100.0
 @export var move_speed_px: float = 190.0
 @export var accuracy: float = 0.55
@@ -89,6 +109,19 @@ var attack_move_destination = null
 var revive_target: BwUnit = null
 var execute_target: BwUnit = null
 var recruit_target: BwUnit = null
+var interaction_building = null
+## MVP3: set by order_enter_vehicle(); checked every physics frame so a
+## unit walking toward a vehicle automatically boards it on arrival.
+var pending_vehicle_to_enter = null
+const VEHICLE_ENTER_RANGE := 55.0
+## MVP3 Patrol Mode (Prompt Dasar "P: Patrol Mode", "Patrol area untuk
+## cartel"). While patrolling, the unit walks between patrol_point_a/b
+## and auto-engages any hostile within acquire_range; once that fight
+## ends it resumes patrolling instead of going IDLE.
+var is_patrolling: bool = false
+var patrol_point_a: Vector2 = Vector2.ZERO
+var patrol_point_b: Vector2 = Vector2.ZERO
+var _patrol_heading_to_b: bool = true
 var is_selected: bool = false
 
 var primary_weapon: WeaponData = null
@@ -200,6 +233,41 @@ func downed_duration() -> float:
 
 
 ## ---------------------------------------------------------------
+## Vehicle mounting (MVP3) — see docs/TECH_DECISIONS.md "Vehicle
+## mounting model" for why units hide/pause rather than the vehicle
+## itself being a selectable RTS unit.
+## ---------------------------------------------------------------
+func mount_vehicle(vehicle: Node, as_driver: bool) -> void:
+	mounted_vehicle = vehicle
+	is_driver = as_driver
+	set_selected(false)
+	visible = false
+	set_physics_process(false)
+	set_collision_layer_value(1, false)
+
+
+func unmount_vehicle(exit_position: Vector2) -> void:
+	mounted_vehicle = null
+	is_driver = false
+	global_position = exit_position
+	visible = true
+	set_physics_process(true)
+	set_collision_layer_value(1, true)
+	state = State.IDLE
+	velocity = Vector2.ZERO
+
+
+## ---------------------------------------------------------------
+## Loot pickup (MVP3)
+## ---------------------------------------------------------------
+func pickup_loot(cargo: int, cash: int) -> void:
+	var room: int = CARGO_CAPACITY - carried_cargo
+	var taken: int = min(room, cargo)
+	carried_cargo += taken
+	carried_cash += cash
+
+
+## ---------------------------------------------------------------
 ## Orders
 ## ---------------------------------------------------------------
 func order_move(target: Vector2) -> void:
@@ -296,6 +364,41 @@ func order_recruit_downed(target: BwUnit) -> void:
 	nav_agent.target_position = target.global_position
 
 
+## MVP3: generic building-driven channel (Bank deposit, Dealer sell).
+## `building` must implement `on_interaction_complete(unit)`.
+func order_patrol(other_point: Vector2) -> void:
+	if not _can_receive_orders():
+		return
+	_clear_all_targets()
+	in_cover = false
+	is_patrolling = true
+	patrol_point_a = global_position
+	patrol_point_b = other_point
+	_patrol_heading_to_b = true
+	state = State.PATROLLING
+	nav_agent.target_position = patrol_point_b
+
+
+func order_enter_vehicle(vehicle) -> void:
+	if not _can_receive_orders() or vehicle == null or not is_instance_valid(vehicle):
+		return
+	if global_position.distance_to(vehicle.global_position) <= VEHICLE_ENTER_RANGE:
+		vehicle.enter(self)
+		return
+	order_move(vehicle.global_position)
+	pending_vehicle_to_enter = vehicle
+
+
+func start_interaction(building, duration: float) -> void:
+	if not _can_receive_orders():
+		return
+	_clear_all_targets()
+	in_cover = false
+	interaction_building = building
+	_channel_timer = duration
+	state = State.INTERACTING
+
+
 func order_use_grenade(target_pos: Vector2) -> void:
 	if not _can_receive_orders() or grenade_weapon == null or grenade_count <= 0:
 		return
@@ -310,7 +413,7 @@ func order_use_grenade(target_pos: Vector2) -> void:
 
 
 func _can_receive_orders() -> bool:
-	return can_move and state != State.DEAD and state != State.DOWNED
+	return can_move and state != State.DEAD and state != State.DOWNED and mounted_vehicle == null
 
 
 func _clear_all_targets() -> void:
@@ -320,6 +423,8 @@ func _clear_all_targets() -> void:
 	execute_target = null
 	recruit_target = null
 	is_reloading = false
+	is_patrolling = false
+	pending_vehicle_to_enter = null
 
 
 ## ---------------------------------------------------------------
@@ -339,12 +444,13 @@ func take_damage(amount: float, attacker = null) -> void:
 	if armor_weapon != null:
 		final_amount *= (1.0 - armor_weapon.armor_damage_reduction)
 	suppression = min(100.0, suppression + SUPPRESSION_PER_HIT)
-	if state == State.REVIVING or state == State.EXECUTING or state == State.RECRUITING:
+	if state == State.REVIVING or state == State.EXECUTING or state == State.RECRUITING or state == State.INTERACTING:
 		# Taking fire interrupts a channeled action (spec: execution "dapat dihentikan").
 		state = State.IDLE
 		revive_target = null
 		execute_target = null
 		recruit_target = null
+		interaction_building = null
 	hp = max(0.0, hp - final_amount)
 	if health_bar:
 		health_bar.set_ratio(hp / max_hp)
@@ -372,6 +478,11 @@ func _enter_downed() -> void:
 		selection_ring.visible = false
 	downed.emit(self)
 	_log_event("%s is downed (%.0fs to revive or execute)." % [display_name, downed_timer])
+	if carried_cargo > 0 or carried_cash > 0:
+		loot_dropped.emit(global_position, carried_cargo, carried_cash)
+		_log_event("%s dropped %d cargo and $%d as loot." % [display_name, carried_cargo, carried_cash])
+		carried_cargo = 0
+		carried_cash = 0
 
 
 func _complete_revive() -> void:
@@ -398,6 +509,15 @@ func _die() -> void:
 func _physics_process(delta: float) -> void:
 	suppression = max(0.0, suppression - SUPPRESSION_DECAY_PER_SEC * delta)
 
+	if pending_vehicle_to_enter != null:
+		if not is_instance_valid(pending_vehicle_to_enter):
+			pending_vehicle_to_enter = null
+		elif global_position.distance_to(pending_vehicle_to_enter.global_position) <= VEHICLE_ENTER_RANGE:
+			var v = pending_vehicle_to_enter
+			pending_vehicle_to_enter = null
+			v.enter(self)
+			return
+
 	match state:
 		State.DEAD:
 			return
@@ -423,6 +543,10 @@ func _physics_process(delta: float) -> void:
 			_process_execute(delta)
 		State.RETREATING:
 			_process_retreat(delta)
+		State.INTERACTING:
+			_process_interaction(delta)
+		State.PATROLLING:
+			_process_patrolling()
 		State.IDLE:
 			velocity = Vector2.ZERO
 			move_and_slide()
@@ -477,7 +601,10 @@ func _process_defending(delta: float) -> void:
 func _process_attacking(delta: float) -> void:
 	if attack_target == null or not is_instance_valid(attack_target) or attack_target.state == State.DEAD or attack_target.state == State.DOWNED:
 		attack_target = null
-		if attack_move_destination != null:
+		if is_patrolling:
+			state = State.PATROLLING
+			nav_agent.target_position = patrol_point_b if _patrol_heading_to_b else patrol_point_a
+		elif attack_move_destination != null:
 			state = State.ATTACK_MOVING
 			nav_agent.target_position = attack_move_destination
 		else:
@@ -579,6 +706,18 @@ func _enter_retreat() -> void:
 	nav_agent.target_position = global_position + away_dir * RETREAT_DISTANCE
 
 
+func _process_patrolling() -> void:
+	var enemy := _find_nearest_enemy(acquire_range)
+	if enemy:
+		attack_target = enemy
+		state = State.ATTACKING
+		return
+	if nav_agent.is_navigation_finished():
+		_patrol_heading_to_b = not _patrol_heading_to_b
+		nav_agent.target_position = patrol_point_b if _patrol_heading_to_b else patrol_point_a
+	_move_towards_next_path_point()
+
+
 func _process_retreat(delta: float) -> void:
 	_retreat_timer -= delta
 	if _retreat_timer <= 0.0 or nav_agent.is_navigation_finished():
@@ -587,6 +726,18 @@ func _process_retreat(delta: float) -> void:
 		move_and_slide()
 		return
 	_move_towards_next_path_point()
+
+
+func _process_interaction(delta: float) -> void:
+	velocity = Vector2.ZERO
+	move_and_slide()
+	_channel_timer -= delta
+	if _channel_timer <= 0.0:
+		var building = interaction_building
+		interaction_building = null
+		state = State.IDLE
+		if building and building.has_method("on_interaction_complete"):
+			building.on_interaction_complete(self)
 
 
 func _move_towards_next_path_point() -> void:

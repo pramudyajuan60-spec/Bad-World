@@ -248,3 +248,63 @@ actual open world). Rather than fake a building with a clickable
 systems as three always-visible HUD buttons. The underlying economy
 logic (money, recruitment queue, roster cap, weapon inventory, payroll)
 is the real, tested system MVP3 will attach to actual world buildings.
+
+## MVP 3 additions
+
+### Vehicle mounting model: units mount, vehicles aren't RTS-selectable units
+
+A vehicle (`Vehicle`, `scripts/gameplay/vehicle.gd`) exposes the exact
+same public method names `SelectionManager`/`CommandController` already
+use for `BwUnit` (`set_selected`, `order_move`, `order_stop`,
+`faction_side`, `global_position`) via duck typing, so it *could* have
+been made directly selectable like a unit. Instead, the chosen model
+is: a `BwUnit` walks up to (or is auto-routed toward) a vehicle and
+"mounts" it (`mount_vehicle`) — the unit is hidden and its own physics
+processing is paused, and further move/stop orders given to that
+*unit* are redirected to the vehicle by `CommandController` because
+the unit's own `order_move` etc. simply no-op while
+`mounted_vehicle != null` (`_can_receive_orders()` returns false).
+This means the player keeps selecting **units** the whole time (never
+has to learn "select the vehicle instead"), and existing selection/
+control-group code needed zero changes — only `CommandController`
+needed a few additions (vehicle-enter routing on right-click, `X` to
+exit). The trade-off: a vehicle with no driver aboard can't be
+selected or ordered directly (matches real life — nobody's driving).
+
+### Heat/DEA response: one global cluster, not spatial clustering
+
+See docs/BALANCE.md "MVP 3 Heat/DEA response simplification" for the
+full rationale — `heat_manager.gd` tracks a single heat value for the
+whole mission rather than Prompt Dasar's per-~35m-cluster model, since
+MVP3 only has one meaningfully contested territory.
+
+### `get_meta(key, null)` still logs an ERROR for a missing key — a real Godot 4.3 quirk
+
+`Object.get_meta(name, default)` is documented to return `default`
+silently when `name` isn't set. In practice, when `default` is
+literally `null`, Godot 4.3 **still prints** `ERROR: The object does
+not have any 'meta' values with the key '...'` even though the
+returned value is correct. Only a non-null default (or checking
+`has_meta()` first) suppresses the message. `drug_dealer.gd` originally
+used `get_meta(key, null)` / unconditional `remove_meta(key)` to pass
+per-unit sale context through a channeled interaction, which spammed
+this error whenever `on_interaction_complete` ran for a unit that
+never actually started a sale through the normal path (caught by a
+test calling it directly). Fixed by checking `has_meta()` before both
+`get_meta()` and `remove_meta()`. Worth remembering for any future code
+using per-instance `set_meta`/`get_meta` as ad hoc storage.
+
+### GDScript lambda closures cannot mutate outer local variables — reconfirmed and now load-bearing
+
+MVP1/2 already hit signal-connected lambdas silently failing to flip a
+captured boolean; MVP3 re-verified this with a minimal isolated repro
+(a lambda incrementing a captured `counter` on every signal emission —
+`counter` remained `0` after two emits). This is not GDScript-version-
+specific trivia, it is a hard rule for this codebase: **never write
+`signal.connect(func(x): outer_var = ...)` and expect `outer_var` to
+change.** Every MVP3 test that needed to observe a signal's fired
+state or payload (`heat_manager`'s `wave_dispatched`, `BwUnit`'s
+`loot_dropped`) uses a bound method on the test script itself
+(`_on_wave_dispatched`, `_on_loot_dropped`) instead of an inline lambda,
+which works correctly because it's ordinary method dispatch on `self`,
+not a captured local.

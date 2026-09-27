@@ -16,4 +16,4 @@ func _ready() -> void:
 
 func _on_continue() -> void:
 	GameState.pending_load_slot = 1
-	get_tree().change_scene_to_file("res://scenes/gameplay/BellarosaTestMap.tscn")
+	get_tree().change_scene_to_file("res://scenes/gameplay/OpenWorldMap.tscn")

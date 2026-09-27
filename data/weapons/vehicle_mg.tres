@@ -1,0 +1,18 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"weapon_vehicle_mg"
+display_name = "Vehicle Machine Gun"
+category = 6
+price = 0
+magazine_size = 200
+reserve_ammo = 400
+damage = 16.0
+rate_of_fire_rpm = 500
+reload_time_sec = 5.0
+range_px = 420.0
+is_hitscan = true
+uses_ammo = true

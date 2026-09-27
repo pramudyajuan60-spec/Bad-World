@@ -10,7 +10,7 @@ next begins (base rule 12).
 | 0 | Repository Audit and Godot Bootstrap | **Done this session** — see report in the PR/handoff message. |
 | 1 | Juan Bellarosa Core RTS Vertical Slice | **Done** — see "MVP 1 delivered scope" below. |
 | 2 | Combat and Unit Management | **Done** — see "MVP 2 delivered scope" below. |
-| 3 | Open-World Economy and Vehicle Loop | Not started |
+| 3 | Open-World Economy and Vehicle Loop | **Done** — see "MVP 3 delivered scope" below. |
 | 4 | Four Asymmetric Campaigns | Not started |
 | 5 | Intelligent AI and Diplomacy | Not started |
 | 6 | Campaign Presentation and User Experience | Not started |
@@ -129,10 +129,98 @@ Known simplifications, deferred to their stated MVP:
 - Grenade/RPG have no visual projectile flight (a timed delay stands in
   for travel time) — see docs/TECH_DECISIONS.md.
 
-## Next up: MVP 3 (not started)
+## MVP 3 delivered scope
 
-Per `Part 5.txt`: open-world map with all four HQs + Central City,
-cargo production/factory upgrades, drug dealer demand curves, carried
-cash vs. bank balance, vehicles (4 classes, enter/exit, seats, moving
-turret accuracy penalty), Heat Meter and DEA response. Substantially
-larger than MVP 2; treat as its own effort.
+Replaced MVP1/2's single small test map with a connected **open world**
+(`scenes/gameplay/OpenWorldMap.tscn`, 8000×6000px): Bellarosa Syndicate
+HQ (NW, functional), DEA/Nasion/Vartieri HQs (NE/SW/SE, non-functional
+landmark markers — see docs/PLACEHOLDER_REGISTER.md), and Central City
+(middle) holding Bank, Recruitment, Gun Shop, and Garage as real
+walk-up buildings (`E` to interact) — upgrading MVP2's always-visible
+HUD buttons for Recruitment/Gun Shop into in-world triggers.
+
+- **Full economy loop** (the MVP's headline acceptance criterion):
+  Bellarosa Factory produces cargo over time (Level 1-4, upgradeable,
+  destructible + repairable, production halts while destroyed without
+  eliminating the faction) → a unit picks up cargo → sells it at one of
+  4 Drug Dealers (each with an independent diminishing-demand curve:
+  100%/90%/75%/50%..., recovering after ~45s idle; Dealer 4 explicitly
+  labeled "(PLACEHOLDER)" per the known 3-asset shortage) → carried
+  cash (separate from bank balance, at risk until deposited) → 6s
+  cancelable Bank deposit → spendable money.
+- **Losing a carrier has real consequences**: a downed unit drops its
+  carried cargo/cash as a generic world pickup (`cash_drop.gd`) that
+  *any* unit — including a hostile one — can grab, implementing both
+  "kehilangan carrier sebelum Bank memiliki konsekuensi" and "loot
+  carried cash sesuai aturan" with one mechanic.
+- **Vehicles**: all 4 classes populated (`data/vehicles/*.tres`:
+  Compact/Armored SUV/Gun Truck/APC) with real seat-capacity
+  enforcement, enter (walk up or auto-approach then board) / exit
+  (`X`), Gun Truck/APC turrets that auto-engage in range with a real
+  moving-vs-stationary accuracy penalty, and Garage repair for a cost
+  scaled to missing HP.
+- **Patrol Mode** (`P` + right-click): a unit walks a two-point patrol
+  loop, auto-engages intruders, and resumes patrolling once the threat
+  clears.
+- **Heat Meter + DEA response**: continuous combat for 120s arms a
+  60s-travel-delayed DEA wave (4×B2 + 1×B3 + an SUV first wave, 2×B3 +
+  an APC second wave), max 2 waves with a 6-minute cluster cooldown,
+  spawning at whichever map edge is farthest from the player (never on
+  top of them) — simplified to one global cluster for this MVP's single
+  contested territory rather than Prompt Dasar's full per-cluster
+  model (documented in docs/TECH_DECISIONS.md).
+- **HUD additions**: a schematic minimap, an Alerts panel (backed by
+  the existing `CombatLog`), and an objective label that adapts to the
+  selected unit's current carry state (pick up → sell → deposit).
+- Save/load extended to persist money, factory level/HP/cargo, Heat
+  wave count, and vehicle position/HP/cargo/cash, verified via a
+  headless test that loads the real scene, mutates state, saves,
+  reloads, and checks every field.
+
+13 headless test suites now cover MVP0–3 (4 new this MVP), all
+passing, plus a manual Xvfb visual pass confirming the world layout
+(all 5 regions correctly positioned per Assets/Game Maps/World.png's
+described layout), Central City buildings, and minimap all render
+correctly.
+
+**Navigation + vehicle profiling** (per this MVP's closing
+instruction, `tools/profile_navigation_and_vehicles.gd`, headless):
+31 simultaneously-navigating `BwUnit`s (Juan's full own-side roster
+cap) + 4 simultaneously-navigating `Vehicle`s, measured over 300
+physics frames:
+
+```
+Avg physics-frame wall time: 16.585 ms (60.3 effective FPS budget)
+P95 physics-frame wall time: 21.118 ms
+Worst physics-frame wall time: 21.308 ms
+Godot's own physics tick target: 16.667 ms (60Hz)
+```
+
+Average frame time sits comfortably under the 60Hz budget; P95/worst
+briefly exceed it by ~4.4ms (likely simultaneous path (re)computation
+for many agents at once), not a sustained overrun. Caveat: headless
+`SceneTree.physics_frame` awaits may already be paced near 60Hz by the
+engine itself regardless of simulation cost, so this measures "does
+the sim comfortably fit the budget" more than raw unpaced CPU cost;
+a windowed run with `--headless` removed and a frame-time overlay
+would be needed for a stricter measurement. No dropped-frame stalls or
+errors occurred during the run.
+
+Known simplifications, deferred to their stated MVP:
+- Only Campaign Juan playable; other 3 HQs are non-functional markers
+  (MVP4 activates all four campaigns).
+- No AI beyond "dummy enemy/DEA responder fires back if approached"
+  (MVP5); the DEA response wave itself is scripted spawning, not an
+  autonomous strategic AI.
+- Vehicle combat is player-turret-only; there is no player command to
+  order an attack against a hostile vehicle (out of this MVP's stated
+  acceptance criteria).
+- Minimap/alert log are simplified schematic/text panels, not final
+  UI art (MVP6).
+
+## Next up: MVP 4 (not started)
+
+Per `Part 6.txt`: activate all four campaigns (Zie/Andrés/Nabil become
+playable alongside Juan), faction-specific bonuses/abilities, Special
+units, Main Character leveling to 5. Substantially larger than MVP 3;
+treat as its own effort.

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/vehicle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"vehicle_apc"
+display_name = "APC"
+vehicle_class = 3
+price = 8500
+seat_capacity = 8
+has_turret = true
+moving_accuracy_penalty = 20.0
