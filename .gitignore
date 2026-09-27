@@ -1,0 +1,16 @@
+# Godot 4+ generated/local files
+.godot/
+*.translation
+export_presets.cfg
+.import/
+
+# Godot Mono (not used, kept for safety)
+.mono/
+data_*/
+
+# Python tooling cache
+__pycache__/
+*.pyc
+
+# Hoplite session/attachment workspace, not project content
+.hoplite/

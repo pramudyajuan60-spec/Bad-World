@@ -1,0 +1,11 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/difficulty_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"difficulty_medium"
+display_name = "Medium"
+reaction_delay_sec = 1.5
+decision_interval_sec = 1.5
+notes = "Uses scouting, cover, retreat, and simple ambush. Manages economy competently. No vision/money/unit cheats."

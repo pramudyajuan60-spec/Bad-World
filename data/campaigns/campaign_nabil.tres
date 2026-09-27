@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/campaign_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_dea.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"campaign_nabil"
+menu_name = "Campaign Nabil"
+main_character_name = "Nabil Verhan"
+faction = ExtResource("2")
+starting_money = 6500
+story_path = "res://Assets/Campaign/DEA Administrator/Main Character/Story.txt"
+portrait_path = "res://Assets/Character Inspect/Nabil.jpg"
+main_character_sprite_path = "res://Assets/Campaign/DEA Administrator/Main Character/Nabil Verhan.png"
+concept_map_path = "res://Assets/Campaign/DEA Administrator/Maps/Nabil Maps (DEA).jpg"

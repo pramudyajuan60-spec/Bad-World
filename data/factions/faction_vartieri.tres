@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/faction_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"faction_vartieri"
+display_name = "Vartieri Cartel"
+asset_folder = "Valtieri Cartel"
+description = "Zie Vartieri's cartel; strongest through vehicles and coordinated squad synergy (Triad Synergy) rather than raw individual firepower."
