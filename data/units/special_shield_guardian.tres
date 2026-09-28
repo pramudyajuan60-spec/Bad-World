@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_nasion.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"unit_special_shield_guardian"
+display_name = "Shield Guardian"
+tier = 3
+faction = ExtResource("2")
+base_hp = 290
+base_armor = 6
+base_accuracy = 0.62
+move_speed = 2.6
+recruit_price = 5000
+salary = 350

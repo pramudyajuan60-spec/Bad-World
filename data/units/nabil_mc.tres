@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_dea.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"unit_nabil_mc"
+display_name = "Nabil Verhan"
+tier = 4
+faction = ExtResource("2")
+base_hp = 145
+base_armor = 5
+base_accuracy = 0.68
+move_speed = 3.3
+recruit_price = 0
+salary = 0

@@ -11,7 +11,7 @@ next begins (base rule 12).
 | 1 | Juan Bellarosa Core RTS Vertical Slice | **Done** — see "MVP 1 delivered scope" below. |
 | 2 | Combat and Unit Management | **Done** — see "MVP 2 delivered scope" below. |
 | 3 | Open-World Economy and Vehicle Loop | **Done** — see "MVP 3 delivered scope" below. |
-| 4 | Four Asymmetric Campaigns | Not started |
+| 4 | Four Asymmetric Campaigns | **Done** — see "MVP 4 delivered scope" below. |
 | 5 | Intelligent AI and Diplomacy | Not started |
 | 6 | Campaign Presentation and User Experience | Not started |
 | 7 | Release Candidate Validation | Not started |
@@ -218,9 +218,107 @@ Known simplifications, deferred to their stated MVP:
 - Minimap/alert log are simplified schematic/text panels, not final
   UI art (MVP6).
 
-## Next up: MVP 4 (not started)
+## MVP 4 delivered scope
 
-Per `Part 6.txt`: activate all four campaigns (Zie/Andrés/Nabil become
-playable alongside Juan), faction-specific bonuses/abilities, Special
-units, Main Character leveling to 5. Substantially larger than MVP 3;
-treat as its own effort.
+All four campaigns are now selectable and fully playable from the menu
+(`campaign_select.gd` no longer locks Fauzi/Atha/Nabil). Each spawns
+into the *same* `OpenWorldMap.tscn` used by MVP3, but every
+faction-dependent piece of setup — starting money, roster cap, B1
+availability, starting factory level/economy multipliers, HQ region,
+Gun Shop vs. DEA Armory, starting vehicle, abilities, and the full
+unit/Special roster — now reads from `CampaignData`/`FactionData`
+instead of being hardcoded to Juan (`FactionData` gained
+`max_roster`/`has_b1`/`can_recruit_enemies`/
+`uses_armory_instead_of_gun_shop`/`starting_factory_level`/
+`factory_value_mult`/`factory_speed_mult`; `CampaignData` gained
+`mc_unit`/`b1_unit`/`b2_unit`/`b3_unit`/`special_units`/`abilities`/
+`starting_vehicle`).
+
+- **Juan (Bellarosa)**: Tactical Link (aura: nearby regulars gain
+  accuracy + suppression resistance), Assassinate (single-target
+  burst with an explicit counterplay cap — cannot drop a MC/Special
+  target below 20% HP in one use, 45s cooldown), Master Manipulator
+  (cheaper enemy-recruit conversion price), can recruit surrendered
+  regulars, 3 named Specials (Viktor Moreau/Elena Varga/Matteo Rizzo).
+- **Zie (Vartieri)**: Vehicle Commander (aura: nearby allied vehicles
+  get HP/speed/turret-damage bonuses and cheaper repairs), Deceptive
+  Assault (temporary self accuracy buff, real cooldown), starts with a
+  pre-owned Armored SUV, 3 role-titled Specials (Axe Assault/Sniper
+  Specialist/Machine Gunner) with **Triad Synergy**: a real, tested
+  all-or-nothing buff (+20% damage, -15% incoming damage, +25%
+  suppression resistance) active only while all 3 are alive and within
+  12m of each other.
+- **Andrés (Nasion)**: fastest economy (+25% cargo value, +10%
+  production speed), factory starts at Level 2, weaker B1 (lower HP/
+  accuracy than Juan's), Command Surge (squad buff: up to 8 nearby
+  allies get 2x damage for 15s, non-stackable, 75s cooldown), Throw
+  Drug Bottle (thrown AoE, travel delay + visible impact radius, 20s
+  cooldown), can recruit surrendered regulars, 3 role-titled Specials
+  (Shield Guardian/Family Strategist/Smuggler Chemist).
+- **Nabil (DEA)**: no B1 tier at all (spawns 3xB2 instead), 24-member
+  roster cap (vs. 30 for the other three), cannot recruit surrendered
+  enemies, crafts weapons at a **DEA Armory** from **Parts** (not
+  money — Parts regenerate passively and are spent on a per-weapon
+  crafting queue with a 5-18s build time), **City Patrol income**
+  (only while genuinely `State.PATROLLING` for 15s+, with a real
+  distance-efficiency penalty for clustered patrollers vs. isolated
+  ones), Discipline Aura (nearby DEA units gain accuracy + steady
+  morale regen), and a **budgeted allied-AI dispatch** ("Dispatch
+  Allies" HUD button, $300 + 90s cooldown) replacing the other
+  factions' hostile Heat/DEA-response mechanic entirely (Nabil *is*
+  the DEA), 4 Specials (Ghost Operative/Shadow Runner/Pursuit
+  Interceptor/Armored Bulwark).
+- **Main Character leveling** (all factions): 4 paid upgrades from
+  level 1 to 5 ($1000/$2000/$3500/$5500, matching Prompt Dasar's
+  table), each level linearly building toward capped totals at level 5
+  (+20% max HP, +8% weapon damage, -15% ability cooldown — never
+  uncapped scaling). Special units unlock at MC level 4, each is
+  unique (one-per-campaign), and price/salary come straight from their
+  `UnitData`.
+- **Balance simulation** (explicit MVP4 acceptance criterion, not just
+  a written claim): `tests/test_mvp4_balance_simulation.gd` runs real,
+  seeded, many-trial headless skirmishes with actual `BwUnit`
+  instances and real shipped weapon data. Measured results: Zie's
+  Triad Synergy trio beats 7xB3 in ~35-45% of trials (strong, not
+  invincible); a Nabil Special beats 4xB1 in ~60-80% of trials
+  (matches Prompt Dasar's "handle ~4xB1" framing while remaining
+  genuinely losable). See docs/BALANCE.md "MVP4 balance simulation
+  calibration" for the tuning story and what a naive matchup revealed.
+- A real gameplay addition surfaced *by* writing that simulation:
+  Special/MC tiers now get intrinsic suppression resistance
+  (`SPECIAL_TIER_SUPPRESSION_RESIST` in `unit.gd`) — without it, any
+  single high-value unit facing 2+ simultaneous attackers gets
+  suppression-locked into an unbreakable retreat loop regardless of
+  its own stats, making "a Special can handle several regulars"
+  structurally impossible under MVP2's original suppression model.
+- A real save/load ordering bug was found and fixed while testing
+  non-Juan saves: the scene must resolve which campaign's save it's
+  loading *before* building any faction-specific world/UI, otherwise
+  "Continue" would silently build Juan's world under a Zie save. See
+  docs/TECH_DECISIONS.md.
+- 4 new headless test suites (17 total): campaign spawn differences,
+  abilities (cooldown/feedback/counterplay), MC leveling + Special
+  unlock/uniqueness, Nabil-specific rules, and the balance simulation.
+- Manual Xvfb visual verification: confirmed Zie's HQ (real "Vartieri
+  Cartel HQ" name, starting vehicle, locked-Special recruitment panel
+  showing "MC level 4 required, currently 1") and Nabil's Central City
+  (DEA Armory building + crafting panel with real Parts costs,
+  "Dispatch Allies" button, 24-roster cap).
+
+Known simplifications, deferred to their stated MVP:
+- Only the player's chosen faction's HQ is functional in a given
+  playthrough; the other three HQs remain non-functional landmark
+  markers (no rival-faction AI yet — MVP5 scope).
+- "Ambush"/"explosive"/"kehabisan amunisi" counterplay against Triad
+  Synergy named in Prompt Dasar are exercised implicitly through the
+  underlying (already-tested) combat/ammo systems, not as a dedicated
+  new test scenario.
+- Ability bar/recruitment/armory panels are still plain generic
+  Controls (MVP6 UI polish), not final themed art.
+
+## Next up: MVP 5 (not started)
+
+Per `Part 7.txt`: Intelligent AI and Diplomacy — layered tactical AI
+(formation, target priority, cover, flank, retreat, revive, vehicle
+use, protect-MC) and strategic AI on top. Substantially larger than
+MVP 4; treat as its own effort.

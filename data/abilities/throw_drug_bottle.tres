@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ability_throw_drug_bottle"
+display_name = "Throw Drug Bottle"
+category = 4
+description = "Thrown incendiary bottle: area-denial damage on impact."
+counterplay_note = "Has a travel delay and a visible impact radius (like a grenade), so enemies can reposition before it lands; 20s cooldown prevents spamming it as a wall."
+cooldown_sec = 20.0
+damage_amount = 55.0
+radius_px = 100.0

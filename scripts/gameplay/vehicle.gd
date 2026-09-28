@@ -144,7 +144,34 @@ func take_damage(amount: float, attacker = null) -> void:
 
 
 func repair_cost() -> int:
-	return int(ceil((max_hp - hp) * REPAIR_COST_PER_HP))
+	return int(ceil((max_hp - hp) * REPAIR_COST_PER_HP * _vehicle_commander_repair_mult()))
+
+
+## MVP4: Zie's Vehicle Commander aura (Prompt Dasar "Vehicle Commander:
+## kendaraan sekitar mendapat handling/turret bonus"). Scans for a
+## nearby friendly Main Character carrying the ability rather than
+## caching a reference, since Zie can move in/out of range at any time.
+func _vehicle_commander_bonus() -> AbilityData:
+	var tree := get_tree()
+	if tree == null:
+		return null
+	for n in tree.get_nodes_in_group("bw_units"):
+		if not (n is BwUnit) or not is_instance_valid(n):
+			continue
+		var mc: BwUnit = n
+		if mc.tier_label != "MC" or mc.faction_side != faction_side:
+			continue
+		if mc.state == BwUnit.State.DEAD or mc.state == BwUnit.State.DOWNED:
+			continue
+		for a in mc.abilities:
+			if a.category == AbilityData.Category.AURA and a.vehicle_hp_mult != 1.0 and global_position.distance_to(mc.global_position) <= a.radius_px:
+				return a
+	return null
+
+
+func _vehicle_commander_repair_mult() -> float:
+	var a := _vehicle_commander_bonus()
+	return a.vehicle_repair_cost_mult if a else 1.0
 
 
 func repair_full() -> void:
@@ -181,7 +208,9 @@ func _move_towards_next_path_point() -> void:
 	var direction: Vector2 = next_pos - global_position
 	if direction.length() > 0.001:
 		direction = direction.normalized()
-	nav_agent.velocity = direction * nav_agent.max_speed
+	var commander := _vehicle_commander_bonus()
+	var speed_mult: float = commander.vehicle_speed_mult if commander else 1.0
+	nav_agent.velocity = direction * nav_agent.max_speed * speed_mult
 
 
 func _on_velocity_computed(safe_velocity: Vector2) -> void:
@@ -205,8 +234,10 @@ func _process_turret(delta: float) -> void:
 		# from an accuracy-point penalty into an equivalent hit-chance
 		# reduction since vehicles don't carry a base "accuracy" stat.
 		var moving_penalty: float = (vehicle_data.moving_accuracy_penalty / 100.0) if (vehicle_data and velocity.length() > 5.0) else 0.0
+		var commander := _vehicle_commander_bonus()
+		var turret_dmg_mult: float = commander.vehicle_turret_damage_mult if commander else 1.0
 		if randf() <= clampf(0.75 - moving_penalty, 0.05, 0.95):
-			_turret_target.take_damage(_turret_weapon.damage, self)
+			_turret_target.take_damage(_turret_weapon.damage * turret_dmg_mult, self)
 
 
 func _find_nearest_enemy(max_range: float):

@@ -1,8 +1,7 @@
 extends Control
 ## Shows all 4 campaigns (Prompt Dasar MVP 1: "Campaign selection
-## menampilkan empat campaign, tetapi hanya Campaign Juan yang playable
-## pada MVP ini"). Non-Juan campaigns are visible but disabled, not
-## hidden, and clearly labeled as locked rather than being dead buttons.
+## menampilkan empat campaign"). All four are playable as of MVP4
+## ("Aktifkan seluruh campaign").
 
 @onready var list: VBoxContainer = $VBox
 @onready var back_btn: Button = $BackButton
@@ -13,13 +12,10 @@ func _ready() -> void:
 	var campaigns: Array = CampaignDatabase.get_all_campaigns()
 	campaigns.sort_custom(func(a, b): return String(a.id) < String(b.id))
 	for c in campaigns:
-		var playable: bool = c.id == &"campaign_juan"
 		var btn := Button.new()
-		btn.text = "%s — %s%s" % [c.menu_name, c.main_character_name, "" if playable else "  (Locked — playable in a later MVP)"]
+		btn.text = "%s — %s" % [c.menu_name, c.main_character_name]
 		btn.custom_minimum_size = Vector2(460, 44)
-		btn.disabled = not playable
-		if playable:
-			btn.pressed.connect(_select.bind(c))
+		btn.pressed.connect(_select.bind(c))
 		list.add_child(btn)
 
 

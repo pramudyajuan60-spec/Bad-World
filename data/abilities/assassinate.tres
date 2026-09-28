@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ability_assassinate"
+display_name = "Assassinate"
+category = 1
+description = "Burst-damage strike against a single target."
+counterplay_note = "Cannot one-hit a Main Character or Special unit: damage against those tiers is capped so at least 20% HP remains, per Prompt Dasar. 45s cooldown gives the target's allies a window to react."
+cooldown_sec = 45.0
+damage_amount = 140.0
+max_target_damage_cap_fraction = 0.2

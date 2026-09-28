@@ -7,14 +7,14 @@ incrementally through a sequence of MVPs defined in
 `Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
 `Part 9.txt` (MVP 7, release candidate).
 
-**Current status: MVP 3 — Open-World Economy and Vehicle Loop.**
-Main menu → campaign/difficulty select → story panel → a connected
-open world (Bellarosa/DEA/Nasion/Vartieri HQs + Central City) with a
-full Factory → cargo → Drug Dealer → carried cash → Bank economy loop,
-4 vehicle classes with seats/enter-exit/turrets, cartel Patrol Mode,
-a Heat Meter + DEA response, and a destructible/repairable factory —
-on top of MVP1/2's RTS controls and weapon-data combat. See
-docs/IMPLEMENTATION_PLAN.md for the full roadmap and what each MVP
+**Current status: MVP 4 — Four Asymmetric Campaigns.**
+All four campaigns (Juan/Zie/Andrés/Nabil) are now playable from the
+menu, each with its own starting resources, roster rules, faction
+bonuses, Main Character abilities (with real cooldowns and
+counterplay), 3-4 unique Special units (unlocking at MC level 4), and
+Main Character leveling to 5 — layered on top of MVP3's open-world
+economy/vehicle loop and MVP1/2's RTS controls and weapon-data combat.
+See docs/IMPLEMENTATION_PLAN.md for the full roadmap and what each MVP
 delivered.
 
 ## Controls (gameplay)
@@ -37,6 +37,16 @@ delivered.
 - `E`: interact with whatever building/vehicle the selected unit is
   standing at (pick up factory cargo, sell to a dealer, deposit at the
   Bank, repair at the Garage, or open the Recruitment/Gun Shop panel).
+- Ability bar (bottom-left, when a Main Character is selected): each
+  faction's active abilities as buttons, showing live cooldown
+  countdowns. AoE abilities (Throw Drug Bottle) arm a targeting mode —
+  click a button, then right-click the ground.
+- **Upgrade MC** (top-right HUD button): spend money to level the
+  Main Character up to level 5.
+- Nabil's campaign replaces the Gun Shop with a **DEA Armory** (craft
+  weapons from Parts, not money) and replaces the hostile Heat/DEA
+  mechanic with a **Dispatch Allies** HUD button (budgeted, on a
+  cooldown).
 - `Ctrl`+1‑9: assign control group. 1‑9: recall control group.
 - Arrow keys / mouse near screen edge: pan camera. Mouse wheel: zoom.
 - `Escape`: pause menu (resume / restart / save / load / quit to menu).

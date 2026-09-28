@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_bellarosa.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"unit_special_elena_varga"
+display_name = "Elena Varga"
+tier = 3
+faction = ExtResource("2")
+base_hp = 230
+base_armor = 3
+base_accuracy = 0.75
+move_speed = 3.2
+recruit_price = 5500
+salary = 400

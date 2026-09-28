@@ -275,3 +275,102 @@ the repo.
   "MVP 3 delivered scope"); it is not a repeated/automated regression
   check, and its headless-pacing caveat means it's a sanity check, not
   a strict unpaced CPU benchmark.
+
+## MVP 4 automated checks (all run and passing at time of writing)
+
+15. **Campaign spawn differences** (`tests/test_mvp4_campaign_spawn.gd`):
+    menu names ("Campaign Fauzi"/"Campaign Atha") stay distinct from
+    the actual character names (Zie Vartieri/Andrés A. Násion) per
+    Prompt Dasar; each of the 4 campaigns spawns its own correct
+    starting money, MC, and starting squad (3xB1, or 3xB2 for Nabil);
+    Andrés's factory starts at Level 2 and his B1 is proven weaker
+    (lower HP) than Juan's; Nabil's roster cap is 24 (not 30), has no
+    "B1" key in `economy.unit_data_by_tier` at all, spawns zero B1
+    units, and cannot recruit enemies. Exit 0,
+    `[Tests] mvp4_campaign_spawn: all passed.`
+
+16. **Abilities** (`tests/test_mvp4_abilities.gd`): an ability is
+    usable once, then genuinely blocked by its own cooldown (not just
+    described as having one); using an ability produces real
+    `CombatLog` feedback; Assassinate is proven to cap damage against
+    an MC/Special target (survives at >= the documented floor) while
+    dealing full, uncapped damage against a regular target (the
+    counterplay is conditional on tier, not a universal nerf); Command
+    Surge is proven to buff at most `max_targets` allies and to refresh
+    rather than stack its multiplier on reuse; Deceptive Assault's
+    self-buff is proven to actually expire back to baseline, not
+    silently persist; a Tactical-Link-style aura is proven to apply
+    only within its radius (a unit placed just outside gets nothing —
+    the counterplay is real, not just narrated). Exit 0,
+    `[Tests] mvp4_abilities: all passed.`
+
+17. **MC leveling + Special unlock** (`tests/test_mvp4_leveling_and_specials.gd`):
+    all 4 upgrade costs match Prompt Dasar's table exactly; capped
+    bonuses at level 5 are exact (+20% HP, +8% damage, -15% cooldown,
+    checked via `is_equal_approx`, not just "greater than 1"); a
+    6th upgrade attempt is refused; Special recruitment is proven
+    locked below MC level 4 and unlocked at exactly level 4; recruiting
+    the same Special index twice is proven to fail (uniqueness); the
+    exact `recruit_price` is proven deducted. Exit 0,
+    `[Tests] mvp4_leveling_and_specials: all passed.`
+
+18. **Nabil specifics** (`tests/test_mvp4_nabil_specifics.gd`): a
+    downed, surrendered enemy is proven to NOT join Nabil's roster
+    (roster count unchanged, faction_side unchanged) when the normal
+    MVP2 recruit-completion path is invoked; Armory crafting is proven
+    to deduct Parts (not money) and to fail with insufficient Parts;
+    a completed craft is proven to land in the shared
+    `gun_shop_inventory` pool; City Patrol income is proven to withhold
+    entirely before the 15s minimum idle time, to start accruing after
+    it, and — the actual "distance efficiency" mechanic, not just its
+    existence — an isolated patroller is proven to earn strictly more
+    per-unit than one of several patrollers clustered in the same
+    sector. Exit 0, `[Tests] mvp4_nabil_specifics: all passed.`
+
+19. **Balance simulation** (`tests/test_mvp4_balance_simulation.gd`,
+    the MVP's explicit "diuji melalui simulasi" requirement): many
+    real, seeded headless skirmishes between actual `BwUnit` instances
+    (real weapon data, real accuracy/suppression/downed resolution).
+    Zie's Triad-Synergy-buffed trio is proven to beat 7xB3 in a
+    genuinely competitive share of trials (not 0%, not 100%); a lone
+    Nabil Special is proven to beat 4xB1 in a genuinely competitive
+    share of trials. See docs/BALANCE.md "MVP4 balance simulation
+    calibration" for the full calibration story, including a real bug
+    this simulation caught (suppression-lock made any 1-vs-2+ fight
+    unwinnable regardless of stats, fixed with a disclosed
+    `SPECIAL_TIER_SUPPRESSION_RESIST` addition) and why the exact
+    enemy-count numbers were tuned away from Prompt Dasar's literal
+    "~8 B3" figure. Exit 0,
+    `[Tests] mvp4_balance_simulation: all passed.` This suite takes
+    noticeably longer to run than the others (many seconds of
+    simulated combat per trial across ~30 trials) — run it standalone
+    with a generous timeout rather than folding it into a quick smoke
+    pass.
+
+## MVP4 manual visual verification
+
+Same Xvfb + Mesa llvmpipe approach as MVP1-3. Confirmed via
+screenshots: Zie's HQ correctly labeled "Vartieri Cartel HQ" (not
+"(PLACEHOLDER)" — it's the active campaign) with her starting Armored
+SUV parked nearby and her real B1 squad; the Recruitment panel showing
+all 3 of Zie's Specials correctly locked with "MC level 4 required,
+currently 1"; Nabil's Central City showing a "DEA Armory" building (not
+a Gun Shop) and the Armory panel listing every craftable weapon's real
+Parts cost; Nabil's topbar showing "Roster: 0/24 + MC" and a "Dispatch
+Allies" HUD button in place of the other factions' Heat/DEA mechanic.
+
+## Known gaps not covered by MVP4 tests
+
+- No automated test drives the ability bar UI's actual button-press ->
+  `CommandController.arm_ability_targeting` -> ground-right-click flow
+  for Throw Drug Bottle end-to-end through input events; the
+  underlying `try_use_ability`/`_use_ability_aoe` path it calls is
+  tested directly.
+- No automated test for the "Dispatch Allies" HUD button's own click
+  handler; `CampaignEconomy.try_dispatch_allies()` (the budget/cooldown
+  logic it calls) is tested directly.
+- Triad Synergy's *trigger condition* (all 3 alive within 12m,
+  evaluated by `open_world_map.gd::_update_triad_synergy`) is exercised
+  live by the balance simulation (which sets the synergy fields
+  directly to isolate combat-power testing) but has no dedicated unit
+  test proving the 12m radius boundary itself.

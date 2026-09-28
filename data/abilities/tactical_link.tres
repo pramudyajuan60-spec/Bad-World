@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ability_tactical_link"
+display_name = "Tactical Link"
+category = 0
+description = "Passive aura: nearby regular units gain accuracy and suppression resistance while Juan is alive and close."
+counterplay_note = "Only affects units within radius_px of Juan; killing/downing/isolating Juan removes the bonus immediately."
+radius_px = 220.0
+accuracy_bonus = 0.08
+suppression_resist_mult = 0.3

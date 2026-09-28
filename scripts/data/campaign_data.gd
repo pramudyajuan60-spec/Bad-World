@@ -17,3 +17,19 @@ extends Resource
 @export_file("*.png", "*.jpg", "*.jpeg") var main_character_sprite_path: String = ""
 ## Concept art map for this faction's home territory (not collision-ready).
 @export_file("*.png", "*.jpg", "*.jpeg") var concept_map_path: String = ""
+
+## MVP4: faction-specific roster/ability data, so open_world_map.gd's
+## spawn logic reads from data instead of a hardcoded per-campaign
+## match statement (rule 10: gameplay numbers/config must be
+## data-driven). `b1_unit` is null for Nabil (Prompt Dasar: no B1 tier).
+@export var mc_unit: UnitData
+@export var b1_unit: UnitData
+@export var b2_unit: UnitData
+@export var b3_unit: UnitData
+@export var special_units: Array[UnitData] = []
+@export var abilities: Array[AbilityData] = []
+## Starting vehicle class for this campaign (Prompt Dasar "STARTING
+## RESOURCES"): Juan/Andrés get a "kendaraan utilitas" (mapped to
+## Compact — no distinct utility class exists), Zie an armored SUV,
+## Nabil a "patrol van" (also mapped to Compact, documented assumption).
+@export var starting_vehicle: VehicleData

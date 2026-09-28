@@ -308,3 +308,57 @@ state or payload (`heat_manager`'s `wave_dispatched`, `BwUnit`'s
 (`_on_wave_dispatched`, `_on_loot_dropped`) instead of an inline lambda,
 which works correctly because it's ordinary method dispatch on `self`,
 not a captured local.
+
+## MVP 4 additions
+
+### Ability system: one flexible schema, not a subclass per ability
+
+`AbilityData` (scripts/data/ability_data.gd) covers all 7 distinct
+abilities across 4 factions through a single `Category` enum (AURA /
+ACTIVE_BURST / ACTIVE_SELF_BUFF / ACTIVE_SQUAD_BUFF / ACTIVE_AOE) with
+a shared, generously-fielded schema rather than a GDScript subclass per
+ability. With only 7 abilities total, a subclass-per-ability approach
+would mean 7 near-empty scripts; a flexible shared schema means the
+whole system is addable/tunable purely in `.tres` data, matching this
+project's existing data-driven-numbers rule. `BwUnit.try_use_ability()`
+dispatches on category; AURA abilities never go through that entry
+point at all — they're continuously re-evaluated by every nearby
+regular unit's own `_refresh_aura_bonuses()`, so an aura's effect is
+never "sticky" past its owner's death/range (a real counterplay, not
+just a description).
+
+### Save/load must resolve the campaign before faction-specific setup
+
+`open_world_map.gd`'s `_ready()` now peeks at a pending save slot's own
+`campaign_id` *before* building any faction-specific world/UI, and only
+falls back to `GameState.current_campaign_id` if there's no pending
+load. Found via testing: "Continue" from the main menu only sets
+`GameState.pending_load_slot`, never `current_campaign_id` — without
+resolving the save's own campaign first, `_build_buildings()` would
+run for Juan even when loading a Zie save, before `_apply_save_data()`
+(previously `_load_from_slot`) corrected `current_campaign_id` too
+late to matter. Confirmed fixed via a dedicated repro (save as Zie,
+then load exactly the way "Continue" does it, assert the world that
+gets built is Zie's).
+
+### Nabil's Patrol income distance-efficiency: per-sector rank, not pairwise distance
+
+Prompt Dasar's "distance efficiency" concept for City Patrol income
+isn't given an exact formula. Implemented as a cheap per-~600px-sector
+rank-based falloff (1st patroller in a sector earns 100%, 2nd 50%, 3rd+
+25%) rather than true pairwise distance checks between every patrolling
+unit, which would need an O(n²) scan every income tick for a rule that
+only matters when units happen to cluster together anyway.
+
+### Zie's Triad Synergy and Vehicle Commander are computed by the owning scene, not the unit itself
+
+`BwUnit` exposes plain `synergy_damage_mult`/`synergy_armor_reduction`/
+`synergy_suppression_resist_mult` fields that `open_world_map.gd`
+writes to every physics frame (`_update_triad_synergy`), rather than
+`BwUnit` trying to find its own two Special siblings. The owning scene
+already tracks `special_unit_instances`; duplicating that bookkeeping
+inside every unit instance would be redundant and harder to keep in
+sync. Same reasoning for `Vehicle._vehicle_commander_bonus()`, which
+scans for a nearby friendly MC with the ability every time it's needed
+rather than caching a reference (Zie can move in and out of range at
+any moment).

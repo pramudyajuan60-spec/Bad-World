@@ -12,6 +12,11 @@ signal repaired
 
 @export var level: int = 1
 @export var faction_side: StringName = &"player"
+## MVP4: per-faction economy modifiers (Prompt Dasar "Andrés: ... Nilai
+## penjualan +25%, Produksi 10% lebih cepat", "Zie: Nilai dasar -5%").
+## Set by the owning scene from FactionData right after instantiation.
+@export var value_mult: float = 1.0
+@export var speed_mult: float = 1.0
 const MAX_LEVEL := 4
 const MAX_STORED_CARGO := 5
 ## Prompt Dasar PABRIK DAN PENJUALAN table.
@@ -48,7 +53,7 @@ func _process(delta: float) -> void:
 	if stored_cargo >= MAX_STORED_CARGO:
 		return
 	_production_timer += delta
-	var interval: float = LEVEL_CONFIG[level]["interval"]
+	var interval: float = LEVEL_CONFIG[level]["interval"] / max(speed_mult, 0.01)
 	if _production_timer >= interval:
 		_production_timer = 0.0
 		stored_cargo += 1
@@ -56,7 +61,7 @@ func _process(delta: float) -> void:
 
 
 func cargo_value() -> int:
-	return int(LEVEL_CONFIG[level]["base_value"] * LEVEL_CONFIG[level]["quality"])
+	return int(LEVEL_CONFIG[level]["base_value"] * LEVEL_CONFIG[level]["quality"] * value_mult)
 
 
 func upgrade_cost() -> int:
