@@ -9,3 +9,7 @@ display_name = "Hard"
 reaction_delay_sec = 0.75
 decision_interval_sec = 0.75
 notes = "Multi-direction attacks, screening, retreat, target priority, bait, interception. Still no vision/money/unit cheats — smarter, not cheating."
+decision_quality = 0.9
+utility_threshold_mult = 0.75
+retreat_hp_threshold = 0.4
+ambush_intel_patience_sec = 40.0

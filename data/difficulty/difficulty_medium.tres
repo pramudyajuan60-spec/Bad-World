@@ -9,3 +9,7 @@ display_name = "Medium"
 reaction_delay_sec = 1.5
 decision_interval_sec = 1.5
 notes = "Uses scouting, cover, retreat, and simple ambush. Manages economy competently. No vision/money/unit cheats."
+decision_quality = 0.6
+utility_threshold_mult = 1.0
+retreat_hp_threshold = 0.3
+ambush_intel_patience_sec = 25.0

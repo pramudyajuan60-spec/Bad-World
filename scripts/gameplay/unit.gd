@@ -148,6 +148,11 @@ var synergy_suppression_resist_mult: float = 0.0
 @export var move_speed_px: float = 190.0
 @export var accuracy: float = 0.55
 @export var acquire_range: float = 140.0
+## MVP5 fog-of-war: how far this unit can currently *see* an enemy for
+## AI intel purposes (FactionKnowledge), distinct from acquire_range
+## which governs the older, already-tested auto-defend engage logic.
+## Kept >= acquire_range so "can shoot it" always implies "can see it".
+@export var vision_range_px: float = 420.0
 ## Fallback melee-ish stats used only when no weapon is resolved (kept
 ## small deliberately: an unarmed unit should not fight effectively).
 @export var unarmed_damage: float = 4.0
@@ -207,6 +212,7 @@ var _pending_cover_body: Node = null
 ## scripts". This keeps unit.gd testable in that mode without changing
 ## normal-boot behavior.
 var _combat_log: Node = null
+var _battlefield_events: Node = null
 
 @onready var nav_agent: NavigationAgent2D = $NavAgent
 @onready var body_poly: Polygon2D = $Body
@@ -217,6 +223,7 @@ var _combat_log: Node = null
 
 func _ready() -> void:
 	_combat_log = get_node_or_null("/root/CombatLog")
+	_battlefield_events = get_node_or_null("/root/BattlefieldEvents")
 	if unit_data != null:
 		max_hp = unit_data.base_hp
 		accuracy = unit_data.base_accuracy
@@ -641,6 +648,9 @@ func order_use_grenade(target_pos: Vector2) -> void:
 	if dist > max_range and dist > 0.001:
 		clamped_pos = global_position + dir.normalized() * max_range
 	grenade_count -= 1
+	if _battlefield_events:
+		var fuse: float = clamped_pos.distance_to(global_position) / max(grenade_weapon.projectile_speed_px, 1.0)
+		_battlefield_events.grenade_incoming.emit(faction_side, clamped_pos, grenade_weapon.blast_radius_px, fuse)
 	_fire_projectile(grenade_weapon, clamped_pos)
 
 
