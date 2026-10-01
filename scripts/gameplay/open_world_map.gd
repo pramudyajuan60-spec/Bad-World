@@ -146,6 +146,29 @@ var _enemy_mc_registry: Array = []
 ## player's own, which for every OTHER campaign is what that
 ## acceptance item is actually testing).
 var _rival_cartel_factories: Array = []
+## Release Candidate fix pass (Issue 1): BwUnit instance -> remaining
+## seconds before a fleeing unit is removed from play. Pure runtime
+## bookkeeping, deliberately not persisted across save/load (see
+## docs/TECH_DECISIONS.md "MC death consequences") — the same level
+## of fidelity the save system already has for other in-flight AI
+## intentions (e.g. patrol points also aren't reconstructed on load).
+var _fleeing_units: Dictionary = {}
+## Prompt Dasar doesn't give exact flee/surrender/rogue odds; derived
+## from the one existing precedent for tier-based loyalty this project
+## already has — the payroll-desertion rule ("Dua siklus: B1 dapat
+## desertir; B2/B3/Special tetap ada tetapi mendapat penalti combat"):
+## the cheapest/weakest tier is the most likely to abandon the fight,
+## the toughest regular tier the least. Special is deliberately absent
+## — Prompt Dasar states outright "Special tidak menyerah" (never
+## surrenders) and "Special terus bertempur" (keeps fighting), so a
+## Special's fate is fixed at ROGUE, not rolled. See docs/TECH_DECISIONS.md.
+const TIER_FATE_WEIGHTS := {
+	"B1": {"flee": 0.50, "surrender": 0.30, "rogue": 0.20},
+	"B2": {"flee": 0.30, "surrender": 0.35, "rogue": 0.35},
+	"B3": {"flee": 0.15, "surrender": 0.35, "rogue": 0.50},
+}
+const FLEE_DISTANCE_PX := 1600.0
+const FLEE_DESPAWN_SEC := 8.0
 ## MVP5: dev-only fog-of-war feed for this map's fixed hostile
 ## encounters (the "Hostile (PLACEHOLDER)" test squad + DEA response
 ## waves), exposed only through the F3 debug overlay. These squads are
@@ -304,6 +327,20 @@ func _process(delta: float) -> void:
 	if _autosave_timer >= AUTOSAVE_INTERVAL_SEC:
 		_autosave_timer = 0.0
 		_run_autosave()
+
+	if not _fleeing_units.is_empty():
+		var expired: Array = []
+		for u in _fleeing_units.keys():
+			if not is_instance_valid(u):
+				expired.append(u)
+				continue
+			_fleeing_units[u] -= delta
+			if _fleeing_units[u] <= 0.0:
+				expired.append(u)
+		for u in expired:
+			_fleeing_units.erase(u)
+			if is_instance_valid(u):
+				u.queue_free()
 
 
 ## MVP4: Zie's Triad Synergy (Prompt Dasar "AKTIF jika ketiganya hidup
@@ -1095,9 +1132,17 @@ func _on_recruit_completed(recruiter: BwUnit, target: BwUnit) -> void:
 	call_deferred("_refresh_enemy_units_cache")
 
 
-func _on_enemy_died(_e) -> void:
+## `died(unit)` always supplies the dying unit itself (see the
+## selection_manager.gd double-bind fix note) — used here to detect a
+## Main Character death and trigger the base-rule consequences for
+## that faction's surviving regulars (Release Candidate fix pass,
+## Prompt Dasar: "Jika Main Character musuh mati: ... Unit tersisa
+## dapat kabur, menyerah, atau menjadi rogue berdasarkan tier").
+func _on_enemy_died(unit) -> void:
 	enemies_eliminated_count += 1
 	call_deferred("_refresh_enemy_units_cache")
+	if unit is BwUnit and unit.tier_label == "MC":
+		call_deferred("_apply_mc_death_consequences", unit.faction_side)
 
 
 func _refresh_enemy_units_cache() -> void:
@@ -1448,6 +1493,106 @@ func _build_campaign_summary_text() -> String:
 	]
 
 
+## ---------------------------------------------------------------
+## Release Candidate fix pass (Issue 1): Main Character death
+## consequences for the eliminated faction's surviving regulars
+## (Prompt Dasar: "Jika Main Character musuh mati: Faction musuh
+## tereliminasi. Unit tersisa dapat kabur, menyerah, atau menjadi
+## rogue berdasarkan tier."). Only ever triggered for a rival
+## faction's MC (see _on_enemy_died) — the player's own MC death is a
+## separate, stronger consequence (immediate DEFEAT, already
+## implemented) that the base rules describe in its own distinct
+## branch, not this one; "where applicable" (per this fix's own
+## requirement) therefore excludes the player's side here, even
+## though this function itself is written generically by faction_side
+## and would work correctly if ever invoked for it.
+## ---------------------------------------------------------------
+func _apply_mc_death_consequences(faction_side: StringName) -> void:
+	for u in enemies_root.get_children():
+		if not (u is BwUnit) or not is_instance_valid(u):
+			continue
+		if u.faction_side != faction_side:
+			continue
+		if u.state == BwUnit.State.DEAD or u.state == BwUnit.State.DOWNED:
+			continue
+		if not (u.tier_label in ["B1", "B2", "B3", "SPECIAL"]):
+			continue
+		_resolve_unit_fate(u)
+
+
+func _resolve_unit_fate(u: BwUnit) -> void:
+	if u.tier_label == "SPECIAL":
+		# "Special terus bertempur ... tidak menyerah": fixed at ROGUE,
+		# no roll — it simply keeps its existing combat behavior.
+		u.has_gone_rogue = true
+		_log_event_safe("%s has gone rogue after %s's Main Character fell, but keeps fighting." % [u.display_name, u.display_name])
+		return
+	var weights: Dictionary = TIER_FATE_WEIGHTS.get(u.tier_label, TIER_FATE_WEIGHTS["B1"])
+	var roll: float = randf()
+	var outcome: String
+	if roll < weights["flee"]:
+		outcome = "flee"
+	elif roll < weights["flee"] + weights["surrender"]:
+		outcome = "surrender"
+	else:
+		outcome = "rogue"
+	_apply_unit_fate_outcome(u, outcome)
+
+
+## Shared application step, also used by the test-only seam below so
+## tests can exercise each outcome deterministically without fighting
+## randf() — same pattern as this project's other test-only seams
+## (e.g. register_enemy_mc_for_test).
+func _apply_unit_fate_outcome(u: BwUnit, outcome: String) -> void:
+	match outcome:
+		"flee":
+			_start_unit_flee(u)
+		"surrender":
+			_start_unit_surrender(u)
+		_:
+			u.has_gone_rogue = true
+			_log_event_safe("%s has gone rogue, leaderless but still hostile." % u.display_name)
+
+
+func _start_unit_flee(u: BwUnit) -> void:
+	u.can_move = true # these are fixed/stationary encounters by design; fleeing is the one exception that needs real movement
+	u.auto_defend = false
+	var dir: Vector2 = u.global_position - player_hq_position
+	if dir.length() < 1.0:
+		dir = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
+	dir = dir.normalized()
+	var dest: Vector2 = u.global_position + dir * FLEE_DISTANCE_PX
+	dest = dest.clamp(MAP_BOUNDS.position, MAP_BOUNDS.position + MAP_BOUNDS.size)
+	u.order_move(dest)
+	_fleeing_units[u] = FLEE_DESPAWN_SEC
+	_log_event_safe("%s fled the area after their Main Character fell." % u.display_name)
+
+
+func _start_unit_surrender(u: BwUnit) -> void:
+	u.auto_defend = false
+	u.is_recruitable_tier = true
+	u.call_deferred("_enter_downed")
+	_log_event_safe("%s surrendered after their Main Character fell." % u.display_name)
+
+
+func _log_event_safe(text: String) -> void:
+	if _combat_log:
+		_combat_log.log_event(text)
+
+
+## Test-only seam (same narrow-purpose pattern as
+## register_enemy_mc_for_test/force_check_victory_for_test): lets a
+## test force a specific fate deterministically instead of fighting
+## randf(), and lets a test trigger the whole faction-wide sweep
+## without needing to kill a real MC first.
+func apply_unit_fate_for_test(u: BwUnit, outcome: String) -> void:
+	_apply_unit_fate_outcome(u, outcome)
+
+
+func apply_mc_death_consequences_for_test(faction_side: StringName) -> void:
+	_apply_mc_death_consequences(faction_side)
+
+
 func _on_restart() -> void:
 	get_tree().paused = false
 	GameState.pending_load_slot = -1
@@ -1521,6 +1666,7 @@ func _serialize_unit(u: BwUnit) -> Dictionary:
 		"is_recruitable_tier": u.is_recruitable_tier, "can_move": u.can_move,
 		"carried_cargo": u.carried_cargo, "carried_cash": u.carried_cash,
 		"mc_level": u.mc_level, "special_index": u.special_index,
+		"has_gone_rogue": u.has_gone_rogue,
 	}
 
 
@@ -1633,11 +1779,25 @@ func _apply_save_data(data: Dictionary) -> void:
 		if loaded_mc_level > 1:
 			u.mc_level = loaded_mc_level
 			u.call_deferred("_apply_mc_level_bonuses")
-		if saved_state == BwUnit.State.DOWNED and saved_hp <= 0.0:
+		if saved_state == BwUnit.State.DOWNED:
+			# Release Candidate fix pass: this used to require
+			# saved_hp <= 0.0 to re-enter DOWNED on load, which was a
+			# safe assumption before this pass's "surrender" fate
+			# existed (a unit could only ever be DOWNED via lethal
+			# combat damage, always hp<=0). A surrendered unit is now
+			# DOWNED with its hp left exactly as it was when it gave
+			# up (not necessarily 0) — loading with the old hp<=0
+			# gate would silently "stand them back up" instead of
+			# preserving the surrender across a save/load cycle. Set
+			# hp directly (not via set_hp(), which would itself
+			# re-trigger _enter_downed() a second time for the
+			# ordinary hp<=0 case) then enter downed exactly once.
+			u.call_deferred("set", "hp", saved_hp)
 			u.call_deferred("_enter_downed")
 			u.call_deferred("set", "downed_timer", float(ud.get("downed_timer", 30.0)))
 		else:
 			u.call_deferred("set_hp", saved_hp)
+		u.has_gone_rogue = bool(ud.get("has_gone_rogue", false))
 
 	for vd in data.get("vehicles", []):
 		var vid: String = vd.get("id", "")

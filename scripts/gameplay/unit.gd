@@ -73,6 +73,17 @@ const DOWNED_DURATION_MC := 90.0
 ## Only Juan-side recruiters may complete a recruit action on this unit
 ## (spec: only regular B1/B2/B3-tier enemies can be recruited).
 @export var is_recruitable_tier: bool = false
+## Release Candidate fix pass (Prompt Dasar base rules: "Jika Main
+## Character musuh mati: ... Unit tersisa dapat kabur, menyerah, atau
+## menjadi rogue berdasarkan tier"). Set true by
+## open_world_map.gd::_resolve_unit_fate() for a surviving unit whose
+## faction's Main Character has died and who rolled the "rogue"
+## outcome (or is a Special, which per spec never surrenders and
+## always keeps fighting). Purely an inspectable/persisted flag —
+## behavior-wise a rogue unit simply keeps its existing auto_defend
+## combat behavior (it has no organized faction left to coordinate
+## with anyway), so no new combat logic is gated by this flag.
+@export var has_gone_rogue: bool = false
 
 ## Optional data-driven base stats; when set, overrides the exported
 ## defaults below in _ready(). Enemy dummies intentionally have none.

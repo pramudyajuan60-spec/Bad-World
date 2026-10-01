@@ -438,6 +438,8 @@ Under continuous combat: waves at t=[180.0, 360.0] (sec); 2 dispatched in 900s (
   trials** — a real, reproducible pattern worth a follow-up
   investigation (not root-caused in this pass; flagged as a technical
   risk in docs/RELEASE_CANDIDATE_REPORT.md rather than guessed at).
+  **Update, Release Candidate Fix Pass**: root-caused and fixed — see
+  below.
 - **DEA response frequency**: deterministic given continuous combat
   (no RNG, not difficulty-gated): wave 1 at t=120s (combat-heat
   threshold) + 60s travel = 180s elapsed; wave 2 at +60s travel after
@@ -469,6 +471,49 @@ Under continuous combat: waves at t=[180.0, 360.0] (sec); 2 dispatched in 900s (
   vehicle-purchase gap, which needs root-causing (not a number to
   retune blindly) before any balance change is justified. See
   docs/RELEASE_CANDIDATE_REPORT.md "Known bugs/technical risks".
+
+## Release Candidate Fix Pass: Campaign Fauzi vehicle-purchase fix re-run
+
+Root cause and fix: `docs/TECH_DECISIONS.md` "Fixed: Fauzi (Zie/
+Vartieri) AI never bought a vehicle". Summary: `_manage_vehicles()`
+now runs before `_manage_recruitment()` in `FactionStrategicAI`'s
+decision order (previously after), so a faction can spend starting
+capital on a vehicle before recruitment/factory-upgrade compete for
+the same cash. Re-ran the identical `tools/run_balance_report.gd` (3
+trials/config, same seed) after the fix:
+
+```
+Faction            Difficulty   Wins   Loss    T/O AvgDurSec Income/min   AvgArmy   Ambush% VehPresent%
+Campaign Juan      Easy            1      2      0     105.7      397.6       2.3      100%        100%
+Campaign Juan      Medium          2      1      0     104.4      402.3       3.0      100%        100%
+Campaign Juan      Hard            3      0      0     102.6      409.7       3.3      100%        100%
+Campaign Atha      Easy            0      3      0     108.1      642.1       2.0      100%        100%
+Campaign Atha      Medium          2      1      0     106.8      983.4       2.7      100%        100%
+Campaign Atha      Hard            1      2      0     107.1      811.1       2.0      100%        100%
+Campaign Fauzi     Easy            3      0      0     127.1      488.3       3.7      100%        100%
+Campaign Fauzi     Medium          2      1      0     104.6      381.4       3.0      100%        100%
+Campaign Fauzi     Hard            2      1      0     102.3      258.6       3.0      100%        100%
+Campaign Nabil     Easy            2      1      0     105.7      913.1       3.0      100%        100%
+Campaign Nabil     Medium          2      1      0     103.9      928.3       2.7      100%        100%
+Campaign Nabil     Hard            2      1      0     102.6      940.3       3.0      100%        100%
+
+--- Ambush frequency by difficulty (all factions pooled) ---
+difficulty_easy 12 trials, 23 total committed ambushes (1.92/match)
+difficulty_medium 12 trials, 23 total committed ambushes (1.92/match)
+difficulty_hard 12 trials, 20 total committed ambushes (1.67/match)
+```
+
+**VehPresent% is now 100% across all 12 cells**, including every
+Campaign Fauzi row (was 0%). Win rates/durations/income remain in the
+same plausible small-sample-noise range as the pre-fix run (e.g.
+Campaign Juan Hard flipped from 2W/1L to 3W/0L, Campaign Atha Medium
+from 0W/3L to 2W/1L — both within normal variance at n=3, not evidence
+of a meaningful balance shift from this change) — confirming the fix
+changed *when* vehicle purchases happen, not overall match outcomes.
+Also confirmed directly with a standalone single-match diagnostic
+probe (not part of the permanent test suite): Zie's AI now purchases
+the Compact vehicle on her very first decision tick, using starting
+capital before recruitment/factory-upgrade ever touch it.
 
 ## MVP7 performance report
 

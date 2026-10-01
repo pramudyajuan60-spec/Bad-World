@@ -1,26 +1,103 @@
-# BAD WORLD — MVP7 Release Candidate Validation Report
+# BAD WORLD — Release Candidate Validation Report
 
 Per `Prompt AI Bad World GAME -/Part 9.txt` ("Kerjakan MVP 7: Release
 Candidate Validation. Jangan menambahkan fitur besar baru. Fokus pada
-perbaikan."). This report distinguishes exactly what Prompt Dasar's
-MVP7 acceptance criteria ask for: done+verified, done-but-not-fully-
-verified, still placeholder, not yet done, known bugs, technical
-risks, how to run from source, and how to produce a Windows build.
+perbaikan.") plus a dedicated **Release Candidate Fix Pass** that
+addressed the issues this report's own MVP7 pass identified. This
+report distinguishes exactly what's required: done+verified, done-but-
+not-fully-verified, still placeholder, not yet done, known bugs,
+technical risks, how to run from source, and how to produce a Windows
+build.
 
 ## Bottom line
 
-**This build is not production-ready.** The project is a complete,
-internally consistent single-player vertical slice covering MVP0-7's
-scope, with 28 passing automated test suites and two real
-pre-existing bugs found and fixed during this validation pass — but
-at least one critical gameplay rule from Prompt Dasar's base rules
-("Unit tersisa dapat kabur, menyerah, atau menjadi rogue") is not
-implemented at all, the Windows export could not be executed in this
-sandbox (platform limitation, not a build defect — see "Technical
-risks"), and several balance/behavior observations need follow-up
-investigation before any numbers should be retuned. See "Not yet
-done" and "Known bugs" below for the specific list of what would need
-to close before a real release.
+**This build is closer to production-ready than the original MVP7
+pass reported, but still has open items below.** The Release
+Candidate Fix Pass closed every concrete issue the original MVP7
+report raised: the missing flee/surrender/rogue consequence is now
+implemented and reuses existing state machinery; the Fauzi
+vehicle-purchase gap was root-caused (AI decision-tick priority, not
+an affordability/wiring bug) and fixed generically; the stale
+placeholder register entry was confirmed stale and resolved; and —
+most importantly — **actually running the exported build for the
+first time (not just the editor) surfaced a genuine, serious,
+pre-existing bug that had silently affected every MVP since MVP0**:
+`CampaignDatabase` and `CampaignEconomy` never loaded *any* campaign/
+faction/difficulty/weapon data in an actual export, because exported
+PCK builds list resource files with an extra `.remap` suffix that
+these loaders' `ends_with(".tres")` checks never matched. This made
+the entire exported game non-functional end-to-end (zero campaigns in
+the menu, no weapons for any unit) in every prior export — invisible
+until this pass actually ran one. **Now fixed and verified against the
+real rebuilt exported Linux binary**: a full scripted playthrough
+(launch → menu → campaign select → real gameplay with the real MC +
+3 real rival MCs → move order → rival MC death → flee/surrender/
+rogue fired for real → player MC death → DEFEAT with campaign summary
+→ clean exit) completed successfully, screenshotted at every step.
+Windows itself still could not be *executed* in this sandbox (Wine/
+gVisor incompatibility, a platform limitation — see "Technical
+risks") — the Windows `.exe` is structurally valid and was exported
+with the identical, now-fixed source, but only the equivalent Linux
+export was actually run. See "Not yet done" and "Known bugs" below
+for what remains before a real release.
+
+---
+
+## Release Candidate Fix Pass: summary
+
+Addressed, in order, the 5 issues raised against this report's own
+original MVP7 findings:
+
+1. **Main Character death consequences** (Prompt Dasar base rules:
+   "Unit tersisa dapat kabur, menyerah, atau menjadi rogue berdasarkan
+   tier") — **implemented**. Reuses existing state machinery end to
+   end (surrender = the same `DOWNED` state every combat-downed enemy
+   already uses; rogue = a unit's existing `auto_defend` combat
+   behavior, just flagged `has_gone_rogue`); flee is a new, small,
+   bounded "move away then despawn" behavior. Tier weights derived
+   from the existing payroll-desertion precedent (documented
+   assumption, not fabricated). Special is fixed at rogue per the
+   explicit "Special tidak menyerah" rule, not rolled. New
+   `tests/test_rc_mc_death_consequences.gd` (6 subtests) plus 2 new
+   subtests in `tests/test_mvp6_victory_defeat.gd` confirming the real
+   end-to-end combat-death path (not just a test seam) fires this for
+   real. See `docs/TECH_DECISIONS.md` for the full design writeup.
+2. **Fauzi (Zie/Vartieri) AI never bought a vehicle** — **root-caused
+   and fixed**. Traced the entire purchase pipeline with a standalone
+   diagnostic probe; found the cause was AI decision-tick priority
+   (recruitment always ran before vehicle-purchase with no reserve for
+   it, and Zie's recruitment costs are the highest of the 3 cartels),
+   not an affordability/wiring/threshold bug. Fixed by reordering
+   `_manage_vehicles()` before `_manage_recruitment()` — a single,
+   faction-agnostic change, not a Fauzi-specific hack. Verified: full
+   balance report now shows 100% vehicle presence across all 12
+   faction/difficulty cells (was 0% for all 3 Fauzi rows). See
+   `docs/TECH_DECISIONS.md` and `docs/BALANCE.md`.
+3. **Windows `.exe` verification** — inspected the export
+   configuration; found it correct, left it unmodified. Re-verified by
+   rebuilding both presets after all other fixes landed.
+4. **Stale `PLACEHOLDER_building_interaction` register entry** —
+   investigated; confirmed genuinely stale (never a real literal
+   placeholder marker in any asset/data file; MVP3 already built real
+   walk-up `E`-to-interact buildings with no always-visible-button path
+   left). Struck through in the Register with its resolution noted,
+   per this project's own placeholder policy (never silently delete a
+   row).
+5. **Make the game actually playable (Windows/export)** — this is
+   where the **most important finding of this entire fix pass**
+   emerged: actually running the exported build (not just the editor)
+   surfaced a critical, serious, pre-existing bug — see "Known bugs"
+   #1 below. Found, fixed, and verified end-to-end against the real
+   rebuilt exported Linux binary. README gained a "How to Play"
+   section (Issue 5.8).
+
+All 30 headless test suites pass (4 new this pass: `test_rc_mc_death_consequences.gd`,
+`test_rc_export_remap_resilience.gd`, plus the 2 updated subtests in
+`test_mvp6_victory_defeat.gd`). Before this pass: 28/28 passing (per
+the original MVP7 report). After: 30/30 passing (confirmed 2 known-
+flaky suites — `test_mvp5_diplomacy.gd`, `test_mvp5_arena.gd` —
+reproduce their pre-existing intermittent RNG failures on rerun,
+unrelated to any change in this pass).
 
 ---
 
@@ -87,7 +164,30 @@ reviewed this session or in an earlier MVP's own test pass.
     rate, Easy/Medium/Hard differences). See `docs/BALANCE.md` "MVP7
     release candidate balance report".
 
-All 28 headless test suites pass (`godot4 --headless --fixed-fps 600
+- **Release Candidate Fix Pass additions**:
+  - **Main Character death consequences** (flee/surrender/rogue),
+    fully implemented and reusing existing state machinery — see
+    summary above.
+  - **Fauzi vehicle-purchase fix**, verified via a 100%-vehicle-
+    presence balance report across all 12 cells.
+  - **A critical export-only bug fixed**: `CampaignDatabase` and
+    `CampaignEconomy`'s directory-scanning loaders never matched the
+    `.remap`-suffixed filenames an exported PCK actually lists,
+    silently loading **zero** campaigns/factions/difficulties/weapons
+    in every real export produced through MVP0-7 — invisible until
+    this pass ran an actual export instead of the editor. Fixed at all
+    3 affected call sites (`campaign_database.gd`,
+    `campaign_economy.gd`, `tools/validate_asset_manifest.gd`).
+    Verified by rebuilding the Linux export and running it headful
+    under Xvfb: console now correctly prints `loaded 4 faction(s), 4
+    campaign(s), 3 difficulty(ies)`, and a full scripted playthrough
+    (menu → campaign select → real gameplay → move order → a real
+    rival MC's death triggering flee/surrender/rogue for real → the
+    player's own MC death triggering DEFEAT with a full campaign
+    summary → clean exit) completed successfully end to end, with a
+    screenshot captured at every step.
+
+All 30 headless test suites pass (`godot4 --headless --fixed-fps 600
 --path . --script res://tests/<name>.gd`, exit 0 each). Asset manifest
 validator passes (306 cataloged files verified present).
 
@@ -95,35 +195,40 @@ validator passes (306 cataloged files verified present).
 
 - **Windows `.exe` runtime behavior**: the export is structurally
   valid (confirmed via `file`: PE32+ executable, x86-64, correct
-  size), but it was never actually *executed* — Wine cannot run any
+  size), built from the exact same fixed source as the verified Linux
+  export, but it was never actually *executed* — Wine cannot run any
   Windows binary at all under this sandbox's gVisor kernel (see
   "Technical risks"). The equivalent **Linux** export was built and
-  run headful under Xvfb, screenshot-confirmed rendering real gameplay
-  UI (the Content Warning screen) — the closest feasible substitute
+  run headful under Xvfb and this time taken all the way through a
+  full scripted playthrough (not just the Content Warning screen as
+  in the original MVP7 pass) — the closest feasible substitute
   available here, but not a substitute for someone with real Windows
   (or a non-gVisor Linux host + real Wine) actually launching the
-  `.exe`.
+  `.exe`. Given the export-remap bug fix applies identically to both
+  presets (same source, same `CampaignDatabase`/`CampaignEconomy`
+  code), there is good reason to expect the Windows build behaves the
+  same way — but this is an expectation, not a verified fact, and
+  should not be reported as such.
 - **Rival-faction encounters' balance weight**: they are new as of
-  this MVP7 pass and use real per-faction stats, but no dedicated
+  the MVP7 pass and use real per-faction stats, but no dedicated
   balance pass was run against them specifically (they are static
   stationary encounters, not part of the `AiMatchArena` win-rate
   sampling) — a player's actual experience fighting through all 3
   should be spot-checked before relying on their difficulty.
-- **Vehicle purchase gap for Campaign Fauzi (Zie/Vartieri)**: the
-  balance report shows 0% vehicle-presence across all 9 trials for
-  this campaign specifically (100% for the other 3). Observed and
-  reported honestly in `docs/BALANCE.md`, but the root cause was not
-  investigated in this pass (out of MVP7's "don't add new features,
-  focus on fixes" scope to chase without first confirming it's a real
-  defect vs. a legitimate economic consequence of Zie's -5% factory
-  value modifier making a vehicle purchase a lower-utility choice for
-  that AI specifically).
 - **Ambush-frequency-vs-difficulty direction**: Easy ambushes
   slightly *more* than Hard (2.00 vs 1.67/match) — explained
   qualitatively in `docs/BALANCE.md` (Hard's better decision quality
   picks direct attacks over ambushes more often) but not independently
   confirmed against `FactionStrategicAI`'s actual utility-comparison
   code path line-by-line.
+- **MC death consequences' tier-weight numbers**: implemented and
+  unit-tested for correctness (right state transitions, right
+  exclusivity, Special always rogue), but — like every other numeric
+  assumption this project documents when Prompt Dasar gives no exact
+  figure — the specific 50/30/20-style percentages themselves are a
+  reasonable derived assumption, not a tuned balance pass; a real
+  release should sanity-check how often each outcome actually "feels
+  right" in practice.
 
 ## 3. Still placeholder
 
@@ -137,20 +242,10 @@ in section 4 below and in the Register's own "must replace" list.
 
 ## 4. Not yet done
 
-- **Rogue/surrender/flee on enemy MC death** (Prompt Dasar base
-  rules: *"Jika Main Character musuh mati: ... Unit tersisa dapat
-  kabur, menyerah, atau menjadi rogue berdasarkan tier"*). This is a
-  genuine missing feature — when any MC (player's or a rival's) dies
-  today, that side's surviving regular units simply continue to exist
-  in whatever state they were in; there is no automatic flee/
-  surrender/rogue-faction transition anywhere in the codebase.
-  Deliberately **not implemented in this MVP7 pass** (would be a new
-  per-unit behavior system, squarely the kind of "fitur besar baru"
-  Prompt Dasar's own MVP7 instructions say to avoid) — flagged here
-  instead, for a future MVP.
 - **Nabil's own Factory + Dealer loop** despite Prompt Dasar's "Nabil
   tidak menjual cargo" — pre-existing since MVP3/4, first documented
-  in MVP6, not addressed in this pass (see
+  in MVP6, not addressed in this fix pass either (out of its stated
+  scope — fixing the 5 named issues, not an open-ended sweep; see
   `docs/PLACEHOLDER_REGISTER.md` "must replace" list for the
   reasoning).
 - **Rival-faction AI is stationary, not mobile** in the live open
@@ -158,34 +253,54 @@ in section 4 below and in the Register's own "must replace" list.
   pattern — the mobile AI itself is fully built and already proven in
   `AiMatchArena`, "wiring it into the live scene with real roaming
   behavior" is the remaining gap, not the AI logic itself).
-- **`PLACEHOLDER_building_interaction` register row appears stale**
-  (describes a pre-MVP3 state) but was not re-verified/removed this
-  pass — flagged rather than silently left inconsistent.
+- **Root-causing the Easy>Hard ambush-frequency direction precisely**
+  (see section 2) — explained qualitatively, not traced line-by-line.
 
 ## 5. Known bugs
 
-### Fixed during this MVP7 pass
-1. **`BwUnit.died` signal double-argument bug** (found during MVP6,
+### Fixed during the Release Candidate Fix Pass
+1. **`CampaignDatabase`/`CampaignEconomy` never loaded any data in an
+   actual export** — the most serious bug found in this project to
+   date. An exported PCK's `DirAccess` lists resource files with an
+   extra `.remap` suffix that these loaders' literal
+   `ends_with(".tres")` checks never matched, so every campaign/
+   faction/difficulty/weapon resource silently failed to load in
+   *every* real export produced through MVP0-7 — completely invisible
+   because every prior verification ran via `godot4 --headless --path
+   .` (editor/script mode, which reads the real filesystem directly
+   with no remap layer). Fixed at all 3 affected call sites. Verified
+   against the real rebuilt exported Linux binary end-to-end (see
+   summary above). New regression test:
+   `tests/test_rc_export_remap_resilience.gd`. See
+   `docs/TECH_DECISIONS.md` for the full technical writeup.
+2. **Fauzi (Zie/Vartieri) AI never bought a vehicle** — root cause was
+   AI decision-tick priority (recruitment competing unfairly with a
+   one-time vehicle purchase, worsened by her having the highest
+   recruitment costs of the 3 cartels), not an affordability/wiring
+   bug. Fixed by reordering two function calls in
+   `faction_strategic_ai.gd`. Verified: 100% vehicle presence across
+   all 12 balance-report cells (was 0% for all 3 Fauzi rows).
+
+### Fixed during the original MVP7 pass
+3. **`BwUnit.died` signal double-argument bug** (found during MVP6,
    fixed then) — included here for completeness since it directly
    affected whether this pass's new victory/defeat tests could even
    observe correct state.
-2. **Nabil's VICTORY factory check looked at the player's own
+4. **Nabil's VICTORY factory check looked at the player's own
    factory instead of the rival cartels'** — fixed; see
    `docs/TECH_DECISIONS.md`.
-3. **Safe-zone exploit**: a unit standing inside a safe zone could
+5. **Safe-zone exploit**: a unit standing inside a safe zone could
    fire/execute/recruit/throw-grenades outward with zero counterplay
    — fixed at all 4 call sites; see `docs/TECH_DECISIONS.md`.
-4. **Balance-report income metric initially reported as negative**
+6. **Balance-report income metric initially reported as negative**
    for every faction (used net cash-flow delta instead of gross
    earned) — fixed before the final captured report.
 
 ### Still open (not fixed, not blocking, but real)
-5. See "Not yet done" above (rogue/surrender/flee; Nabil's own
-   Factory/Dealer loop).
-6. The Campaign Fauzi vehicle-purchase gap (see section 2) — open,
-   needs root-causing.
-7. `PLACEHOLDER_building_interaction`'s Register row is likely stale
-   (see section 4) — open, needs a quick re-verify+removal pass.
+7. Nabil's own Factory/Dealer loop despite "tidak menjual cargo" (see
+   "Not yet done" above).
+8. The precise code-path confirmation for the Easy>Hard ambush-
+   frequency direction (see section 2) — explained, not traced.
 
 ## 6. Technical risks
 
@@ -203,20 +318,35 @@ in section 4 below and in the Register's own "must replace" list.
    target hardware, especially given gVisor's own syscall-emulation
    overhead could itself be adding latency not present on a real
    Windows/Linux desktop.
-3. **4 known-flaky test suites** (`test_mvp5_tactical_ai.gd`,
+3. **This fix pass is a direct, concrete lesson in why "tests pass" ≠
+   "it works"**: all 28 MVP7 suites passed throughout MVP0-7 while the
+   actual exported game was completely non-functional the entire time
+   (see Known bugs #1) — every one of those tests ran in editor/
+   script mode, which structurally cannot observe the PCK `.remap`
+   layer that caused the real bug. This is not a flaw in those tests'
+   own logic, but a reminder that **headless `--script` tests verify
+   game logic correctness, not export/packaging correctness** — only
+   actually building and running an export (as this pass finally did)
+   can catch this entire bug class. Any future change to resource
+   organization/loading should be spot-checked against a real export
+   periodically, not assumed safe because the test suite is green.
+4. **4 known-flaky test suites** (`test_mvp5_tactical_ai.gd`,
    `test_mvp5_diplomacy.gd`, `test_mvp5_arena.gd`,
    `test_mvp3_vehicle.gd`) occasionally fail on unseeded RNG/timing
    variance and pass on rerun — confirmed pre-existing (reproduced on
-   each file completely unmodified by this pass). Low risk
+   each file completely unmodified by this pass, both before and after
+   the fixes in this pass landed). Low risk
    individually, but an unseeded-RNG test suite is itself a standing
    source of false-negative CI noise if this project ever adds
    continuous integration.
-4. **No CI configured** for this repository — every verification in
+5. **No CI configured** for this repository — every verification in
    this report was run manually, once, in this sandbox session. A
    real release process should wire these same test commands into an
    actual CI pipeline before relying on "all tests passed" as an
-   ongoing guarantee rather than a point-in-time snapshot.
-5. **Export template / Wine footprint**: Godot's 4.3-stable export
+   ongoing guarantee rather than a point-in-time snapshot — and, per
+   risk #3 above, that CI pipeline should include an actual export+run
+   smoke test, not just `--script`-mode unit tests.
+6. **Export template / Wine footprint**: Godot's 4.3-stable export
    templates (~1GB) and Wine (~1.5GB installed via apt) were installed
    into this sandbox session to produce and attempt to run the builds
    this report describes; neither is committed to the repository (by
@@ -240,7 +370,7 @@ godot4 --editor --path .
 # Play directly, non-interactive (same binary, no --editor flag):
 godot4 --path .
 
-# Run the full automated test suite (28 suites):
+# Run the full automated test suite (30 suites):
 for f in tests/*.gd; do
   godot4 --headless --fixed-fps 600 --path . --script "res://$f"
 done
@@ -304,3 +434,11 @@ default `$HOME` isn't writable in your environment.
    chmod +x builds/linux/BadWorld.x86_64
    ./builds/linux/BadWorld.x86_64
    ```
+   **This step matters more than it looks**: this exact verification
+   step is what caught the critical `.remap` resource-loading bug (see
+   "Known bugs" #1) — a build that exports "successfully" with zero
+   errors can still be completely non-functional at runtime if the
+   wrong resources load. Watch the console output for
+   `[CampaignDatabase] loaded 4 faction(s), 4 campaign(s), 3
+   difficulty(ies).` specifically — `loaded 0 ...` means something is
+   silently broken even though the export itself "succeeded."

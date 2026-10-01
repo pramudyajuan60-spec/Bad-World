@@ -34,12 +34,28 @@ func _load_dir(path: String, into: Dictionary) -> void:
 	dir.list_dir_begin()
 	var file_name := dir.get_next()
 	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".tres"):
-			var res: Resource = load(path + file_name)
-			if res != null and ("id" in res):
-				into[res.id] = res
-			else:
-				push_error("CampaignDatabase: %s%s did not load as expected typed resource" % [path, file_name])
+		if not dir.current_is_dir():
+			# Release Candidate Fix Pass: an exported/PCK build's
+			# DirAccess lists resource files with Godot's own extra
+			# ".remap" redirection suffix (e.g.
+			# "faction_bellarosa.tres.remap") instead of the real
+			# ".tres" name this check was written against — so this
+			# always silently matched 0 files in any actual export
+			# (confirmed: editor/`--path .` mode has no remap layer and
+			# never exposed this, which is exactly why it went
+			# undetected through MVP0-7). load() itself must still be
+			# given the un-suffixed name; see docs/TECH_DECISIONS.md
+			# "Release Candidate: CampaignDatabase never loaded any
+			# data in an actual export".
+			var real_name: String = file_name
+			if real_name.ends_with(".remap"):
+				real_name = real_name.substr(0, real_name.length() - ".remap".length())
+			if real_name.ends_with(".tres"):
+				var res: Resource = load(path + real_name)
+				if res != null and ("id" in res):
+					into[res.id] = res
+				else:
+					push_error("CampaignDatabase: %s%s did not load as expected typed resource" % [path, real_name])
 		file_name = dir.get_next()
 	dir.list_dir_end()
 

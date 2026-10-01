@@ -96,6 +96,48 @@ delivered.
   AI objective/utility/decision-reason and known-enemy intel; freed on
   startup and structurally absent in a release export).
 
+## How to Play
+
+### Option A — Run from Godot (recommended, works on any OS)
+
+1. Install **Godot 4.3 stable** (exactly this version — see
+   "Running the project" below for why) from
+   https://godotengine.org/download/.
+2. Open this repository's root folder in Godot (it contains
+   `project.godot`) and press **Run** (▶), or from a terminal:
+   ```sh
+   godot4 --path .
+   ```
+3. The game launches straight into the real game — **no manual setup,
+   no running a specific internal scene, no editor-only steps**: a
+   Content Warning screen, then Main Menu → Start → pick a campaign
+   card → pick a difficulty → read the campaign's intro story → Begin.
+   You're now playing: select your Main Character/squad (left click/
+   drag), right-click to move/attack, `E` to interact with buildings,
+   `Escape` for the pause menu. See "Controls (gameplay)" above for
+   the full list — every hotkey there is also rebindable from
+   Settings.
+
+### Option B — Run an exported Windows/Linux build
+
+This repository does not commit pre-built binaries (`builds/` is
+gitignored — see `docs/RELEASE_CANDIDATE_REPORT.md` "How to make a
+Windows build" for exactly why and how to produce one yourself from
+source in a few commands). Once you have `builds/windows/BadWorld.exe`
+or `builds/linux/BadWorld.x86_64`:
+
+- **Windows**: double-click `BadWorld.exe`. No installation, no
+  additional runtime/dependencies — it's a single self-contained
+  executable with its game data embedded.
+- **Linux**: `chmod +x BadWorld.x86_64 && ./BadWorld.x86_64`.
+
+Controls are identical to Option A. If the game launches to a Main
+Menu showing **zero campaigns available** on Campaign Select, your
+build predates the Release Candidate Fix Pass's critical export-
+loading fix — rebuild from the current source (see
+`docs/RELEASE_CANDIDATE_REPORT.md` "Known bugs" for what this was and
+why rebuilding fixes it).
+
 ## Running the project
 
 1. Install **Godot 4.3 stable** (or a later 4.x stable release) from

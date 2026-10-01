@@ -97,10 +97,18 @@ func _load_weapon_catalog() -> void:
 	dir.list_dir_begin()
 	var f := dir.get_next()
 	while f != "":
-		if f.ends_with(".tres"):
-			var w: WeaponData = load("res://data/weapons/" + f)
-			weapon_catalog[String(w.id)] = w
-			gun_shop_inventory[String(w.id)] = 0
+		if not dir.current_is_dir():
+			# Release Candidate Fix Pass: see campaign_database.gd's
+			# identical fix — an exported PCK lists these as
+			# "<name>.tres.remap", not "<name>.tres"; load() still
+			# needs the un-suffixed name.
+			var real_name: String = f
+			if real_name.ends_with(".remap"):
+				real_name = real_name.substr(0, real_name.length() - ".remap".length())
+			if real_name.ends_with(".tres"):
+				var w: WeaponData = load("res://data/weapons/" + real_name)
+				weapon_catalog[String(w.id)] = w
+				gun_shop_inventory[String(w.id)] = 0
 		f = dir.get_next()
 	dir.list_dir_end()
 
