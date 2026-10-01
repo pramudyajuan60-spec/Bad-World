@@ -9,15 +9,13 @@ config_version=5
 
 config/name="Bad World"
 config/description="Single-player open-world 2.5D isometric RTS. MVP 0: repository audit and Godot bootstrap only, no gameplay yet."
-run/main_scene="res://scenes/ui/MainMenu.tscn"
+run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 CampaignDatabase="*res://scripts/autoload/campaign_database.gd"
-GameState="*res://scripts/autoload/game_state.gd"
-SaveService="*res://scripts/autoload/save_service.gd"
 
 [display]
 

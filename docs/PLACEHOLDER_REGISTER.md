@@ -22,16 +22,7 @@
 
 | ID | Stands in for | Status | Blocking? | Notes |
 |---|---|---|---|---|
-| PLACEHOLDER_unit_body | Animated top/isometric-down unit sprite | Active (MVP 1) | No | `scripts/gameplay/unit.gd` draws a procedural colored `Polygon2D` circle (blue = player, red = enemy) + a `TierLabel` text tag instead of a real sprite. Real animated sprites depend on the sprite-sheet pipeline described in `Prompt SpritSheet/`, out of scope until an MVP actually imports those frames. |
-| PLACEHOLDER_selection_ring | Themed selection-ring sprite/shader | Active (MVP 1) | No | `scripts/gameplay/selection_ring.gd` draws a plain circle outline via `_draw()`. |
-| PLACEHOLDER_health_bar | Themed health-bar UI sprite | Active (MVP 1) | No | `scripts/gameplay/health_bar.gd` draws two flat-color rects via `_draw()`. |
-| PLACEHOLDER_destination_marker | Themed move-order marker VFX | Active (MVP 1) | No | `scripts/gameplay/destination_marker.gd` draws a plain X-in-circle, auto-frees after ~0.9s. |
-| PLACEHOLDER_dummy_enemy_squad | A real hostile faction encounter | Active (MVP 1) | No | `bellarosa_test_map.gd` spawns 4 units named "Hostile (PLACEHOLDER)", faction_side `enemy_dummy`, with no faction identity, art, or AI beyond firing back if approached. Exists purely so MVP 1's "basic attack-move and target acquisition" criterion is testable. Replace with a real faction encounter once MVP 4/5 AI exists. |
-
-The gaps below are **known asset shortages** (not created as placeholder
-files yet, since no gameplay currently needs them), tracked here so the
-MVP that first needs each one creates the actual placeholder file per
-the policy above, instead of rediscovering the gap.
+| (none yet) | — | — | — | MVP 0 creates no gameplay placeholders. The gaps below are **known asset shortages**, tracked here so the MVP that first needs each one creates the actual placeholder file per the policy above, instead of rediscovering the gap. |
 
 ## Known future placeholder needs (tracked, not yet created)
 
