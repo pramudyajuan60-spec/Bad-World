@@ -442,8 +442,128 @@ Known simplifications, deferred to their stated MVP:
   was built, since the open world map doesn't yet have dedicated
   geometry for those features.
 
-## Next up: MVP 6 (not started)
+## MVP 6 delivered scope
 
-Per `Part 8.txt`: Campaign Presentation and User Experience. Not yet
-read in full; will be read before work begins per base rule 12 (stop
-and report after each MVP rather than proceeding automatically).
+Per `Part 8.txt` ("Lanjutkan dari MVP 5. Kerjakan MVP 6: Campaign
+Presentation dan User Experience"):
+
+- **Content warning** (`scripts/ui/content_warning.gd`,
+  `scenes/ui/ContentWarning.tscn`): the project's new
+  `run/main_scene`, shown once per app launch before the Main Menu,
+  naming BAD WORLD's actual mature themes (organized crime, armed
+  combat, drug trafficking, kidnapping/recruitment of defeated
+  combatants, executions) plainly rather than a generic disclaimer.
+- **Campaign selection cards** (`scripts/ui/campaign_select.gd`):
+  rebuilt from a bare button list into a full card per campaign —
+  portrait, faction name, keunggulan (strengths), kelemahan
+  (weaknesses), starting units (computed from the same
+  `FactionData.has_b1`/`CampaignData` fields `_spawn_fresh()` actually
+  uses, never duplicated), economy rating (★ stars + label), and unit
+  cap (`max_roster` + MC). The underlying strengths/weaknesses/rating
+  fields are new `FactionData` exports populated from each faction's
+  already-shipped, already-tested MVP3/4/5 mechanics (see
+  `data/factions/*.tres`) — restating existing facts for the UI, not
+  new balance claims.
+- **Contextual tutorial** (`scripts/gameplay/tutorial_controller.gd`):
+  10 hints (selection, movement, recruitment, equipment, ammo,
+  factory/dealer/bank, vehicle, patrol, defend, MC protection), each
+  shown at most once ever via a one-at-a-time dismissible HUD toast,
+  triggered from the real gameplay events that teach each concept
+  (first selection, first move/defend/patrol/vehicle-mount order via
+  new `CommandController` signals, first recruit, opening Inspect,
+  first low/out-of-ammo state, first factory/dealer/bank interaction,
+  and immediately at mission start for MC protection). "Seen" state is
+  install-wide via `UserPrefsService`, not per-save — documented
+  assumption in docs/TECH_DECISIONS.md.
+- **Objective tracker, event/alert log, unit inspect/inventory,
+  minimap, MC ability bar**: all pre-existing from MVP1-5, kept as-is
+  (already real and tested); MVP6 only adds the panels below alongside
+  them.
+- **Payroll warning**: a red HUD banner on a missed payroll cycle
+  (`economy.payroll_processed` signal), in addition to the existing
+  Alerts-log line.
+- **Low ammo warning**: a HUD label watching the current selection for
+  `primary_mag + primary_reserve` at or below 25% of the weapon's full
+  capacity ("LOW AMMO") or zero ("OUT OF AMMO").
+- **Factory/dealer demand UI**: a HUD panel showing live
+  `factory.stored_cargo`/level/destroyed-state and every dealer's
+  `current_demand_multiplier()`.
+- **Patrol efficiency overlay**: Nabil-only HUD panel driven by a new,
+  side-effect-free `CampaignEconomy.patrol_efficiency_snapshot()` that
+  mirrors `apply_patrol_income`'s sector-rank rule for display.
+- **Diplomacy UI**: shows the one diplomacy-adjacent relationship that
+  is actually live in the open world today (DEA Heat/wave-dispatch
+  state), with an honest note that full faction trust/alliance/
+  betrayal (`scripts/diplomacy/diplomacy_controller.gd`) only has a
+  second live faction to negotiate with inside `AiMatchArena` right
+  now — see docs/PLACEHOLDER_REGISTER.md.
+- **MC ability bar, minimap**: pre-existing, kept; minimap gained a
+  **camera alert**: an "Under Attack!" banner + Jump-To button when a
+  player unit takes damage while off-screen (approximate on-screen
+  check against the camera's current zoom/viewport rect).
+- **Pause/Settings**: Pause Menu gained "Save / Load" and "Settings"
+  buttons (replacing the old single-slot Save/Load pair).
+- **Volume controls** (`scripts/autoload/user_prefs_service.gd`):
+  real `Master`/`Music`/`SFX` `AudioServer` buses with working
+  volume sliders — audio *content* is still placeholder (nothing
+  plays yet), the controls themselves are not.
+- **Key rebinding**: all 14 gameplay hotkeys (stop/attack-move/defend/
+  grenade/recruit/patrol/exit-vehicle/pause/interact/debug-overlay/
+  camera pan ×4) plus 9 control-group keys moved from hardcoded
+  `KEY_*` checks into real `InputMap` actions (`project.godot
+  [input]`, `bw_*`), rebindable through the Settings panel with
+  same-key-collision rejection and a reset-to-default per action.
+- **Autosave + ≥3 manual save slots + migration**
+  (`scripts/autoload/save_service.gd`): slot 0 is a dedicated autosave
+  slot a manual Save button can never write to; slots 1-3 are manual;
+  `SaveSlotPanel` lists all 4 with campaign/money/timestamp summaries
+  and independent Save/Load/Delete; `schema_version` bumped 1→2 with a
+  real step-by-step `_migrate()` (not just a mismatch warning) that
+  backfills the new MVP6 campaign-summary fields on an old save; Main
+  Menu's "Continue" now resumes whichever slot (including autosave) was
+  saved most recently.
+- **Victory, defeat, restart, campaign summary**
+  (`scripts/gameplay/victory_defeat_screen.gd`): the player's own MC
+  dying triggers DEFEAT today (fully reachable in the live game); the
+  cartel/Nabil VICTORY rule (all rival MCs dead, +no active cartel
+  factory for Nabil) is implemented and tested
+  (`tests/test_mvp6_victory_defeat.gd`, against a test-registered fake
+  enemy MC) but structurally unreachable in the live open world until
+  a rival faction is actually spawned there (see
+  docs/PLACEHOLDER_REGISTER.md `PLACEHOLDER_rival_faction_hqs`). Both
+  outcomes show a campaign summary (play time, money earned, final
+  balance, roster, enemies eliminated) and Restart/Load/Quit.
+- A real pre-existing bug found and fixed by this MVP's own victory/
+  defeat test: `SelectionManager.register_unit` and two call sites in
+  `open_world_map.gd` connected `BwUnit.died` (which already carries
+  the dying unit as its own argument) with an extra `.bind(unit)`,
+  silently breaking every player-unit-death and enemy-death cleanup
+  callback end-to-end (Godot logs a swallowed "Method expected 1
+  arguments, but called with 2" and the callback never runs). Fixed by
+  dropping the redundant bind at all three sites — see
+  docs/TECH_DECISIONS.md.
+- 4 new headless test suites (27 total):
+  `test_mvp6_campaign_select_data.gd`, `test_mvp6_prefs_and_tutorial.gd`,
+  `test_mvp6_save_slots_and_migration.gd`, `test_mvp6_victory_defeat.gd`.
+- Manual Xvfb visual verification at 1920×1080 and 1366×768 (Content
+  Warning, Main Menu, Campaign Select cards, Settings, in-mission HUD),
+  plus a keyboard-only navigation pass; see docs/TEST_PLAN.md.
+
+Known simplifications, deferred:
+- Victory is implemented and tested but not reachable in the live
+  open world yet (see above) — MVP7 territory alongside rival faction
+  HQs.
+- Tutorial "seen" state and volume/keybind prefs are install-wide, not
+  per-save-slot — a documented assumption, not a bug.
+- Nabil's open-world map still spawns a functional Factory + 4 Dealers
+  even though Prompt Dasar states "Nabil tidak menjual cargo" (no
+  Dealer loop) — a pre-existing MVP3/4 gap, not introduced by MVP6;
+  the new Factory/dealer demand HUD panel simply displays whatever
+  state exists for any campaign, so it is harmless but not hidden for
+  Nabil. Documented here since it was only discovered while building
+  that panel.
+
+## Next up: MVP 7 (not started)
+
+Not yet read in full; will be read before work begins per base rule 12
+(stop and report after each MVP rather than proceeding automatically).

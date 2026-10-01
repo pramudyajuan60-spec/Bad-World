@@ -62,6 +62,12 @@ var _ally_dispatch_cooldown: float = 0.0
 var _combat_log: Node = null
 
 var money: int = 0
+## MVP6 campaign-summary stat (Prompt Dasar "campaign summary"): total
+## money gained over the mission, tracked separately from `money`
+## (which can also go down via spend()). Reset to 0 right after the
+## owning scene sets starting_money, so starting funds don't count as
+## "earned".
+var lifetime_money_earned: int = 0
 var max_roster: int = 30 # excludes the Main Character, per Prompt Dasar
 var recruited_count: int = 0
 
@@ -119,6 +125,8 @@ func configure_roster(campaign: CampaignData) -> void:
 
 
 func set_money(amount: int) -> void:
+	if amount > money:
+		lifetime_money_earned += (amount - money)
 	money = amount
 	money_changed.emit(money)
 
@@ -292,6 +300,41 @@ func apply_patrol_income(delta: float, patrolling_units: Array) -> void:
 			total_income += (PATROL_BASE_INCOME_PER_MIN / 60.0) * delta * efficiency
 	if total_income > 0.0:
 		set_money(money + int(round(total_income)))
+
+
+## MVP6 "Patrol efficiency overlay" (read-only UI helper): mirrors
+## apply_patrol_income's sector-rank-based efficiency rule without any
+## side effects, so the HUD can show each patrolling unit's current
+## income tier and idle-warmup progress every frame.
+func patrol_efficiency_snapshot(patrolling_units: Array) -> Array:
+	var sectors: Dictionary = {}
+	for u in patrolling_units:
+		if not is_instance_valid(u):
+			continue
+		var sector := Vector2i(floori(u.global_position.x / PATROL_SECTOR_SIZE_PX), floori(u.global_position.y / PATROL_SECTOR_SIZE_PX))
+		if not sectors.has(sector):
+			sectors[sector] = []
+		sectors[sector].append(u)
+	var out: Array = []
+	for sector in sectors.keys():
+		var units: Array = sectors[sector]
+		for i in range(units.size()):
+			var u = units[i]
+			var id: int = u.get_instance_id()
+			var idle_sec: float = _patrol_idle_time.get(id, 0.0)
+			var warmed_up: bool = idle_sec >= PATROL_MIN_IDLE_SEC
+			var efficiency := 1.0
+			if i >= PATROL_MAX_INCOME_UNITS_PER_SECTOR:
+				efficiency = 0.0 # beyond this sector's income cap entirely
+			elif i == 1:
+				efficiency = 0.5
+			elif i >= 2:
+				efficiency = 0.25
+			out.append({
+				"name": u.display_name, "efficiency": efficiency if warmed_up else 0.0,
+				"warmed_up": warmed_up, "idle_sec": idle_sec,
+			})
+	return out
 
 
 ## --- Nabil's allied DEA response dispatch (replaces hostile Heat/DEA) ---

@@ -15,3 +15,7 @@ uses_armory_instead_of_gun_shop = false
 starting_factory_level = 1
 factory_value_mult = 0.95
 factory_speed_mult = 1.0
+strengths = Array[String](["Starts with an Armored SUV", "Triad Synergy: all 3 Special units alive within 12m grant the whole squad +20% damage and suppression resistance", "Vehicle- and convoy-focused tactical AI"])
+weaknesses = Array[String](["Factory sale value -5% (0.95x)", "Cannot recruit downed enemy regulars"])
+economy_rating_stars = 2
+economy_rating_label = "Below average (factory value -5%)"

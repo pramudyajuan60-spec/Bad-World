@@ -15,3 +15,7 @@ uses_armory_instead_of_gun_shop = false
 starting_factory_level = 1
 factory_value_mult = 1.0
 factory_speed_mult = 1.0
+strengths = Array[String](["Can recruit downed enemy regulars (Master Manipulator) to grow the roster beyond recruitment alone", "No economic penalty — balanced baseline factory value/speed", "Intel- and cover-focused tactical AI prioritizes protecting the Main Character"])
+weaknesses = Array[String](["No factory value/speed bonus (baseline 1.0x/1.0x)", "No unique squad-wide combat multiplier like Zie's Triad Synergy"])
+economy_rating_stars = 3
+economy_rating_label = "Average (baseline factory value and speed)"

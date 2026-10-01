@@ -478,3 +478,128 @@ live-game AI scope", which was fixed before this final capture.
   tool run manually, not wired into any automated pass/fail test, per
   Prompt Dasar only asking for an initial report rather than a balance
   gate at this MVP.
+
+## MVP 6 automated checks (all run and passing at time of writing)
+
+All 27 suites in `tests/` pass with `godot4 --headless --fixed-fps 600
+--path . --script res://tests/<name>.gd`, exit 0.
+
+26. **Campaign card data** (`tests/test_mvp6_campaign_select_data.gd`):
+    every campaign's `FactionData` has a non-empty strengths/weaknesses
+    list, a 1-5 `economy_rating_stars`, a non-empty rating label, a
+    positive unit cap, and both `portrait_path`/`story_path` resolve to
+    real files on disk. Exit 0,
+    `[Tests] mvp6_campaign_select_data: all passed.`
+27. **Prefs + tutorial** (`tests/test_mvp6_prefs_and_tutorial.gd`):
+    `UserPrefsService.set_volume`/`get_volume` round-trip and actually
+    mute/unmute the real `Music` `AudioServer` bus at 0%/>0%; rebinding
+    a key updates `InputMap` immediately and a same-key collision with
+    a different action is rejected; `reset_keybind_to_default` restores
+    `project.godot`'s original binding; and `TutorialController` shows
+    a hint exactly once, queues a second hint triggered while one is
+    showing, and advances the queue on dismiss. Exit 0,
+    `[Tests] mvp6_prefs_and_tutorial: all passed.`
+28. **Save slots + migration** (`tests/test_mvp6_save_slots_and_migration.gd`):
+    3 independent manual slots keep separate data (an untouched slot
+    loads as null); saving to a manual slot never touches the
+    dedicated autosave slot's own data; `slot_summary`'s timestamp
+    correctly identifies the more-recently-saved of two slots; and a
+    hand-written `schema_version=1` payload loads successfully,
+    migrates to the current `SCHEMA_VERSION`, records
+    `migrated_from_version`, backfills new v2 fields with safe
+    defaults, and preserves every pre-existing field unchanged. Exit
+    0, `[Tests] mvp6_save_slots_and_migration: all passed.`
+29. **Victory/defeat** (`tests/test_mvp6_victory_defeat.gd`): the
+    player's own Main Character dying pauses the game and shows a
+    DEFEAT screen with a campaign-summary body (play time included);
+    registering a fake enemy MC (via a narrow test-only seam,
+    `register_enemy_mc_for_test`) and marking it dead triggers VICTORY
+    once checked; and Nabil's additional rule is enforced separately —
+    the same dead-enemy-MC setup does *not* win while
+    `factory.is_destroyed == false`, and does win once it's set to
+    `true`. Exit 0, `[Tests] mvp6_victory_defeat: all passed.`
+
+This suite's own first run surfaced a real pre-existing bug: see
+docs/TECH_DECISIONS.md "Fixed: `BwUnit.died` signal double-argument bug
+broke all death cleanup" — `SelectionManager.register_unit` and two
+`open_world_map.gd` enemy-spawn call sites connected `died` with a
+redundant `.bind(unit)`, silently breaking every death-cleanup
+callback. Fixed at all three sites.
+
+## MVP6 manual visual verification
+
+Same Xvfb + Mesa llvmpipe approach as MVP1-5, this time driving the
+full menu → campaign → gameplay → pause → defeat flow automatically
+(a temporary autoload script added and removed for this verification
+only — not committed) and capturing a screenshot at each stop, at both
+**1920×1080** and **1366×768**:
+
+- Content Warning: themes stated plainly, single "I Understand —
+  Continue" button, readable at both resolutions.
+- Main Menu, Campaign Select: all 4 campaign cards render with real
+  portrait art, keunggulan/kelemahan, ★ economy rating, unit cap, and
+  starting units, inside a scrollable list.
+- **Found and fixed a real layout bug during this pass**: the first
+  capture showed campaign cards overflowing far past the
+  `ScrollContainer`'s width (a horizontal scrollbar, wrapped text and
+  the "Select" button both cut off on the right edge). Root cause:
+  (1) `Label.autowrap_mode` alone does not constrain a Label's
+  reported minimum width — it needs an explicit
+  `custom_minimum_size.x` to actually wrap instead of requesting space
+  for one unwrapped line; (2) the portrait `TextureRect`'s
+  `EXPAND_FIT_WIDTH_PROPORTIONAL` mode computed a much wider minimum
+  size than its `custom_minimum_size` whenever the source portrait's
+  own aspect ratio was wide, since that mode preserves aspect ratio
+  rather than respecting the given box. Fixed by giving each wrapped
+  label a fixed `custom_minimum_size.x`, and switching the portrait to
+  `EXPAND_IGNORE_SIZE` + `STRETCH_KEEP_ASPECT_CENTERED` (the same
+  combination `story_panel.gd`'s own portrait already used) so the box
+  size no longer depends on the source image's aspect ratio. Re-
+  captured and confirmed clean (no horizontal scrollbar, no clipped
+  text/buttons) at both resolutions.
+- Settings: Volume tab (3 sliders, real `AudioServer` bus names) and
+  Controls tab (rebind buttons) both render inside the panel; readable
+  at both resolutions.
+- Gameplay HUD: topbar, objective, the new factory/dealer demand panel
+  (top-left), the new diplomacy panel (top-right, correctly describing
+  live Heat/DEA state and the full-diplomacy caveat), and the minimap
+  (bottom-right) all render without overlapping at both resolutions.
+- Pause Menu: confirmed the new "Save / Load" and "Settings" buttons
+  render alongside Resume/Restart/Quit.
+- Defeat screen: triggered by killing the player's Main Character;
+  confirmed title "DEFEAT", the elimination reason, a full campaign-
+  summary body (campaign, play time, money earned, final balance,
+  roster, enemies eliminated), and Restart/Load Last Save (correctly
+  disabled — no save existed yet)/Quit buttons.
+- Keyboard navigation: a headless check confirmed menu `Button`s
+  default to `focus_mode = FOCUS_ALL` and that Godot's automatic
+  focus-neighbor system moves focus between buttons in a
+  `VBoxContainer` on `ui_down`/`ui_up` — every MVP6 screen is built
+  from the same Box-container-of-Buttons pattern as the pre-existing
+  menus, so this one check generalizes to all of them rather than
+  needing a separate pass per screen.
+
+These screenshots are not committed to the repository; they were
+shared directly in the pull request/chat as verification evidence.
+
+## Known gaps not covered by MVP6 tests
+
+- No automated test drives real mouse/keyboard `InputEvent`s through
+  the rebound `InputMap` actions end-to-end in `CommandController`
+  (e.g. actually rebinding Stop and then pressing the new key) — key
+  rebinding itself is tested at the `UserPrefsService`/`InputMap`
+  level, and `CommandController`'s own hotkey handling was already
+  only manually/visually verified before MVP6 (see MVP1's own listed
+  gap) and remains so.
+- The VICTORY outcome is tested against a fake registered enemy MC,
+  not by actually playing to that outcome in the live open world —
+  see docs/PLACEHOLDER_REGISTER.md `PLACEHOLDER_rival_faction_hqs`.
+- No automated test for the tutorial toast's on-screen Control tree
+  itself (position/visibility of the built `Label`/`Button` nodes) —
+  covered functionally (`hint_shown` emits the right id/title/body
+  exactly once) by `test_mvp6_prefs_and_tutorial.gd`, and visually by
+  the Xvfb pass (though by the time of that pass, this install's
+  `user_prefs.json` already had every hint marked seen from earlier
+  verification runs, so the toast itself wasn't re-captured — its
+  "shown once" behavior is what the automated test specifically
+  targets instead).

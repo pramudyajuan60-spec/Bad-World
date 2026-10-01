@@ -13,7 +13,12 @@ var control_groups: Dictionary = {}
 
 func register_unit(u: BwUnit) -> void:
 	player_units.append(u)
-	u.died.connect(_on_unit_died.bind(u))
+	# `died` already carries the dying unit as its own argument
+	# (signal died(unit)); binding it again here would deliver 2 args
+	# to a 1-arg handler and silently fail every connection (verified:
+	# this previously broke dead-player-unit cleanup entirely — see
+	# docs/TECH_DECISIONS.md "died signal double-argument bug").
+	u.died.connect(_on_unit_died)
 
 
 func _on_unit_died(u: BwUnit) -> void:
