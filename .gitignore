@@ -1,8 +1,15 @@
 # Godot 4+ generated/local files
 .godot/
 *.translation
-export_presets.cfg
 .import/
+
+# MVP7 release-candidate export output (hundreds of MB of binaries,
+# never committed — see docs/TEST_PLAN.md "MVP7 Windows/Linux export
+# verification" for how to reproduce them). export_presets.cfg itself
+# (the preset *definition*, not its output) is intentionally tracked
+# — overriding Godot's own default template exclusion — since Prompt
+# Dasar MVP7 explicitly asks for a committed Windows export preset.
+builds/
 
 # Godot Mono (not used, kept for safety)
 .mono/

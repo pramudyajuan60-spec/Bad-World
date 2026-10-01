@@ -581,6 +581,8 @@ func order_execute(target: BwUnit) -> void:
 		return
 	if target.state != State.DOWNED or target.faction_side == faction_side:
 		return
+	if economy != null and economy.is_position_safe(global_position):
+		return # Prompt Dasar "BANK DAN SAFE ZONE": weapons lowered while standing in a safe zone
 	if target.economy != null and target.economy.is_position_safe(target.global_position):
 		_log_event("Execution of %s blocked: inside a safe zone." % target.display_name)
 		return
@@ -596,6 +598,8 @@ func order_recruit_downed(target: BwUnit) -> void:
 		return
 	if target.state != State.DOWNED or target.faction_side == faction_side or not target.is_recruitable_tier:
 		return
+	if economy != null and economy.is_position_safe(global_position):
+		return # Prompt Dasar "BANK DAN SAFE ZONE": "Tidak ada capture"
 	_clear_all_targets()
 	in_cover = false
 	recruit_target = target
@@ -641,6 +645,8 @@ func start_interaction(building, duration: float) -> void:
 func order_use_grenade(target_pos: Vector2) -> void:
 	if not _can_receive_orders() or grenade_weapon == null or grenade_count <= 0:
 		return
+	if economy != null and economy.is_position_safe(global_position):
+		return # Prompt Dasar "BANK DAN SAFE ZONE": "Tidak ada grenade"
 	var dir: Vector2 = target_pos - global_position
 	var dist: float = dir.length()
 	var max_range: float = grenade_weapon.range_px
@@ -890,6 +896,14 @@ func _try_fire_stationary(delta: float) -> void:
 	var weapon := _resolve_active_weapon()
 	if weapon == null:
 		return # unarmed: cannot fight until a weapon is manually assigned
+	# MVP7 fix: "Uji safe zone exploit" surfaced that only the
+	# *target's* safe-zone status was ever checked (take_damage); a
+	# unit standing inside the zone itself could fire out at an
+	# unprotected target indefinitely with zero counterplay — exactly
+	# what Prompt Dasar's "Senjata diturunkan" ("weapons lowered") +
+	# "Musuh tidak boleh ... menembak tanpa counterplay" rule forbids.
+	if economy != null and economy.is_position_safe(global_position):
+		return
 	var range_px: float = weapon.range_px
 	var dist: float = global_position.distance_to(attack_target.global_position)
 	if dist > range_px:

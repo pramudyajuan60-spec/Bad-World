@@ -39,6 +39,7 @@
 | PLACEHOLDER_dea_allied_agent_visuals | Real allied-DEA-agent sprites/identity | Active (MVP 4) | No | Nabil's "Dispatch Allies" spawns units named "Allied DEA Agent", reusing the same procedural-shape `BwUnit` visuals as every other placeholder squad. |
 | PLACEHOLDER_ability_bar_ui | Themed ability-bar/HUD art | Active (MVP 4) | No | `ability_bar.gd` is a plain generic `Button` column with tooltip text for description/counterplay, not final art — MVP6 UI polish territory. |
 | PLACEHOLDER_ai_debug_overlay_ui | Themed debug-overlay styling | Active (MVP 5) | No | `ai_debug_overlay.gd` is a plain `Label` in a `PanelContainer`, dev-only and release-gated by design (Prompt Dasar explicitly asks for a debug overlay, not final-art UI) — not a gap that needs fixing, just noted for completeness. |
+| PLACEHOLDER_rival_faction_combat_identity | Rival MC/guard final art + mobile AI | Active (MVP 7) | No | `_spawn_rival_factions()` (MVP7) gives each rival faction's MC *real* `mc_unit` combat stats and makes VICTORY genuinely reachable, but their visuals are still the same procedural-shape `BwUnit` body every placeholder unit uses, their display names carry a literal "(PLACEHOLDER rival MC)"/"(PLACEHOLDER)" suffix, and they are intentionally stationary (`can_move = false`, `auto_defend = true`) rather than running the full mobile STRATEGIC/TACTICAL AI (which remains proven separately in the headless `AiMatchArena`) — see docs/TECH_DECISIONS.md "MVP5 live-game AI scope", which this MVP7 change extends rather than reverses. |
 | PLACEHOLDER_mvp6_ui_art | Themed Settings/Save-Load/Victory-Defeat/campaign-card/tutorial-toast art | Active (MVP 6) | No | All MVP6 UI (`settings_panel.gd`, `save_slot_panel.gd`, `victory_defeat_screen.gd`/`.tscn`, `campaign_select.gd` cards, `tutorial_controller.gd` toast, `content_warning.gd`) is built from generic `Control`/`Button`/`Label`/`HSlider`/`TabContainer` nodes, not final themed art. Functionally complete and tested. |
 | PLACEHOLDER_audio_content | Real sound effects/music | Active (since MVP 0, explicit in MVP6) | No | MVP6 wires real `Master`/`Music`/`SFX` `AudioServer` buses with working volume sliders (`UserPrefsService`), but nothing in the project plays an `AudioStream` through them yet — there is no sound content to mix. The controls themselves are real and functional, not placeholders; the audio content routed through them is what's still pending. |
 
@@ -69,3 +70,80 @@ because MVP 0 ships no playable world/units.
    the sheet is corrected; needed by MVP 4 (Nabil's specials).
 7. **Vartieri weapon concept coverage (axe/sniper/MG)** — re-check before
    implementing Zie's 3 Special units in MVP 4.
+
+## MVP7 release-candidate audit: safe-for-MVP vs must-replace-before-real-release
+
+Per Prompt Dasar MVP7 item 2 ("Pisahkan placeholder yang aman untuk MVP
+dan yang wajib diganti"). Every row in the Register above is sorted
+into exactly one of these two buckets. "Safe for MVP" means: does not
+affect correctness, does not block any acceptance criterion, and a
+player can finish any campaign start-to-end without it mattering
+functionally — only visual/presentation polish is missing. "Must
+replace before a real release" means: either it's a functional gap
+(not just a visual one) or it would read as unfinished/broken to a
+player, not just unthemed.
+
+### Safe for MVP (cosmetic-only; do not block release as a vertical slice)
+
+- PLACEHOLDER_unit_body, PLACEHOLDER_selection_ring,
+  PLACEHOLDER_health_bar, PLACEHOLDER_destination_marker — all pure
+  `_draw()` placeholders for real sprites; fully functional gameplay
+  underneath.
+- PLACEHOLDER_hud_panels, PLACEHOLDER_ability_bar_ui,
+  PLACEHOLDER_mvp6_ui_art — generic `Control`/`Button`/`Label` UI,
+  functionally complete and tested, no themed art yet.
+- PLACEHOLDER_minimap, PLACEHOLDER_alert_log_panel — simplified but
+  functionally correct (proportionally accurate positions, real
+  combat-log feed).
+- PLACEHOLDER_explosive_projectile_flight — the hitscan/projectile
+  *mechanic* is real and tested; only the visible flight arc is
+  missing.
+- PLACEHOLDER_dea_responder_visuals, PLACEHOLDER_dea_allied_agent_visuals,
+  PLACEHOLDER_neutral_faction_identity, PLACEHOLDER_rival_faction_combat_identity —
+  real stats/combat/AI behind a generic visual identity.
+- PLACEHOLDER_ai_debug_overlay_ui — dev-only by design, release-gated,
+  not meant to ship with final art at all.
+- PLACEHOLDER_audio_content — real, working volume controls with no
+  audio content routed through them yet; does not block any gameplay
+  loop (every acceptance criterion this project has ever stated is
+  about mechanics, not sound).
+- All 7 "known future placeholder needs" (asset-shortage items 1-7
+  below) — cosmetic/labeling mismatches on concept art and contact
+  sheets, already worked around with documented substitutions (e.g.
+  Nabil's "8" special treated as unit #3) that do not change any
+  gameplay number.
+
+### Must replace before a real release (functional gaps, not just unthemed)
+
+- **PLACEHOLDER_dummy_enemy_squad** and **PLACEHOLDER_region_hq_markers /
+  PLACEHOLDER_rival_faction_hqs** together describe the same real gap:
+  the live open-world map's only hostile content is this MVP1 test
+  squad, the DEA Heat response, and (as of MVP7) 3 stationary rival-
+  faction encounters with real stats but no mobile AI. A real release
+  needs actual roaming rival-faction AI in the open world (the
+  TACTICAL/STRATEGIC/INFORMATION/AMBUSH/DIPLOMACY layers already exist
+  and are proven in `AiMatchArena` — this is "wire it into the live
+  scene," not "build it from scratch").
+- **PLACEHOLDER_building_interaction** — confirm this row is stale:
+  MVP3 *did* place real walk-up buildings with `E`-to-interact (see
+  `open_world_map.gd::_handle_interact`); this Register row predates
+  that and should be removed once someone double-checks no leftover
+  always-visible-button path remains. Not re-verified in this MVP7
+  pass (out of its stated scope) — flagged here rather than silently
+  left stale.
+- **Rogue/surrender/flee behavior not implemented at all** (not
+  previously its own Register row — added here by this MVP7 audit,
+  Prompt Dasar base rules: "Jika Main Character musuh mati: ... Unit
+  tersisa dapat kabur, menyerah, atau menjadi rogue berdasarkan
+  tier"). Today, when any MC (player or rival) dies, that side's
+  remaining regular units simply keep existing in whatever state they
+  were in — no automatic flee/surrender/rogue transition exists
+  anywhere in the codebase. This is a genuine missing feature, not a
+  visual placeholder; see "Belum dikerjakan" in
+  docs/RELEASE_CANDIDATE_REPORT.md.
+- **Nabil's own Factory + 4 Dealers** — Prompt Dasar states "Nabil
+  tidak menjual cargo" (no cargo-selling loop for Nabil), but
+  `_build_buildings()` still gives Campaign Nabil a fully functional
+  own Factory and Dealer loop identical to every cartel campaign (a
+  pre-existing MVP3/4 gap, first flagged in MVP6's own docs). Not a
+  crash/blocker, but a real rules deviation a release should close.

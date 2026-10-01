@@ -91,6 +91,7 @@ func _build_faction(cfg: Dictionary, hq_pos: Vector2) -> void:
 	add_child(fr.economy)
 	fr.economy.configure_roster(fr.campaign)
 	fr.economy.set_money(fr.campaign.starting_money)
+	fr.economy.lifetime_money_earned = 0 # starting funds aren't "earned" — see open_world_map.gd's identical fix
 	fr.economy.max_roster = fr.campaign.faction.max_roster if fr.campaign.faction else 15
 
 	fr.factory = FACTORY_SCRIPT.new()
@@ -275,3 +276,56 @@ func DiplomacyControllerScript() -> Script:
 
 func free_all() -> void:
 	queue_free()
+
+
+## ---------------------------------------------------------------
+## MVP7 balance-report read-only accessors (tools/run_balance_report.gd).
+## Deliberately narrow getters rather than exposing _factions/
+## FactionRuntime directly, so the reporting tool can't accidentally
+## mutate match state.
+## ---------------------------------------------------------------
+func get_faction_sides() -> Array:
+	return _factions.map(func(fr): return fr.faction_side)
+
+
+func get_money(faction_side: StringName) -> int:
+	for fr in _factions:
+		if fr.faction_side == faction_side:
+			return fr.economy.money
+	return 0
+
+
+## Gross money earned (sales + deposits etc., never decremented by
+## spending — see CampaignEconomy.lifetime_money_earned), the honest
+## basis for an "income per minute" report metric. `get_money()` above
+## is a net balance and can legitimately go *down* over a match purely
+## from aggressive AI spending, which would misreport as negative
+## income if used for that purpose.
+func get_lifetime_money_earned(faction_side: StringName) -> int:
+	for fr in _factions:
+		if fr.faction_side == faction_side:
+			return fr.economy.lifetime_money_earned
+	return 0
+
+
+func get_army_size(faction_side: StringName) -> int:
+	for fr in _factions:
+		if fr.faction_side == faction_side:
+			return _get_alive_units(fr).size()
+	return 0
+
+
+func get_vehicle_count(faction_side: StringName) -> int:
+	for fr in _factions:
+		if fr.faction_side == faction_side:
+			return _get_faction_vehicles(fr).size()
+	return 0
+
+
+## Connects `callback` (no args) to every faction's AmbushController
+## ambush_triggered signal, so a caller can count real ambush
+## commitments across a match without reaching into _factions itself.
+func connect_ambush_triggered(callback: Callable) -> void:
+	for fr in _factions:
+		if fr.ambush:
+			fr.ambush.ambush_triggered.connect(func(_cp, _squad): callback.call())

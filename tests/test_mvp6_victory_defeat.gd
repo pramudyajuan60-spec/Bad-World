@@ -28,6 +28,10 @@ func _run() -> void:
 	await _test_mc_death_triggers_defeat()
 	await _test_victory_fires_once_all_enemy_mcs_dead()
 	await _test_nabil_victory_also_requires_factory_destroyed()
+	await _test_real_rival_factions_are_spawned_and_registered()
+	await _test_real_rival_mc_death_actually_triggers_victory()
+	await process_frame
+	await process_frame
 	_finish()
 
 
@@ -65,6 +69,12 @@ func _test_victory_fires_once_all_enemy_mcs_dead() -> void:
 	await process_frame
 	await process_frame
 	var map = root.get_node("OpenWorldMap")
+	# MVP7: _spawn_rival_factions() now always populates 3 *real* rival
+	# MCs on spawn; clear those first so this test can assert purely on
+	# the generic victory-condition logic with one controlled fake,
+	# independent of that real spawn (which gets its own dedicated test
+	# below).
+	map.clear_enemy_mc_registry_for_test()
 	var fake_enemy_mc: BwUnit = map._make_unit(&"fake_rival_mc", "Fake Rival MC", "MC", &"enemy_rival", false)
 	fake_enemy_mc.state = BwUnit.State.DEAD
 	map.register_enemy_mc_for_test(fake_enemy_mc)
@@ -80,15 +90,57 @@ func _test_nabil_victory_also_requires_factory_destroyed() -> void:
 	await process_frame
 	await process_frame
 	var map = root.get_node("OpenWorldMap")
+	map.clear_enemy_mc_registry_for_test()
 	var fake_cartel_mc: BwUnit = map._make_unit(&"fake_cartel_mc", "Fake Cartel MC", "MC", &"enemy_cartel", false)
 	fake_cartel_mc.state = BwUnit.State.DEAD
 	map.register_enemy_mc_for_test(fake_cartel_mc)
-	map.factory.is_destroyed = false
+	# MVP7 bugfix under test: Nabil's factory check must look at the
+	# *rival cartels'* factories (_rival_cartel_factories), never the
+	# player's own `factory` node — force every real rival factory
+	# standing first, then destroy them one at a time.
+	var rival_factories: Array = map.rival_cartel_factories_for_test()
+	_expect(rival_factories.size() == 3, "Campaign Nabil's 3 rivals (Bellarosa, Nasion, Vartieri) are all cartels, so all 3 should get a rival cartel factory, got %d" % rival_factories.size())
+	for rf in rival_factories:
+		rf.is_destroyed = false
 	map.force_check_victory_for_test()
 	await process_frame
 	_expect(not map.victory_defeat_screen.visible, "Nabil should not win while a cartel factory is still standing")
-	map.factory.is_destroyed = true
+	for rf in rival_factories:
+		rf.is_destroyed = true
 	map.force_check_victory_for_test()
 	await process_frame
 	_expect(map.victory_defeat_screen.visible, "Nabil should win once all cartel MCs are dead and no cartel factory remains")
+	paused = false
+
+
+func _test_real_rival_factions_are_spawned_and_registered() -> void:
+	_spawn(&"campaign_juan")
+	await process_frame
+	await process_frame
+	var map = root.get_node("OpenWorldMap")
+	# Juan's 3 rivals: Nabil (DEA), Andrés (Nasion), Zie (Vartieri).
+	_expect(map._enemy_mc_registry.size() == 3, "Spawning should register exactly 3 real rival MCs (the other 3 campaigns), got %d" % map._enemy_mc_registry.size())
+	for mc in map._enemy_mc_registry:
+		_expect(is_instance_valid(mc) and mc.state != BwUnit.State.DEAD, "Each real rival MC should start alive")
+		_expect(mc.tier_label == "MC", "Each registered rival should actually be tier MC")
+		_expect(mc.unit_data != null, "Each rival MC should have its own faction's mc_unit data, not null")
+		_expect(not mc.can_move, "Rival MCs are a stationary fixed encounter by design (see docs/TECH_DECISIONS.md), not full mobile AI")
+	# Juan's campaign has no uses_armory_instead_of_gun_shop rival
+	# requirement, so no rival cartel Factory should be built for it.
+	_expect(map.rival_cartel_factories_for_test().is_empty(), "Non-Nabil campaigns should not build any rival cartel factories")
+
+
+func _test_real_rival_mc_death_actually_triggers_victory() -> void:
+	_spawn(&"campaign_juan")
+	await process_frame
+	await process_frame
+	var map = root.get_node("OpenWorldMap")
+	_expect(not map.victory_defeat_screen.visible, "Victory screen should not show before any rival MC has died")
+	for mc in map._enemy_mc_registry.duplicate():
+		if is_instance_valid(mc):
+			mc._die()
+	await process_frame
+	await process_frame
+	_expect(map.victory_defeat_screen.visible, "Killing all 3 real rival MCs via normal BwUnit._die() should trigger VICTORY for real, with no test-only seam involved")
+	_expect(map.victory_defeat_screen.title_label.text == "VICTORY", "Should show VICTORY, got '%s'" % map.victory_defeat_screen.title_label.text)
 	paused = false

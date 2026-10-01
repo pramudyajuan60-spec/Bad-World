@@ -23,7 +23,7 @@ reshuffled mid-project.
 | Faction/diplomacy | Not started | 4/7 |
 | Tactical AI | Not started | 5 |
 | Strategic AI | Not started | 5 |
-| Objective/victory | Not started | 4 |
+| Objective/victory | **Done** — real VICTORY (rival faction MCs + Nabil's rival-factory condition) and DEFEAT, both reachable by playing | 4/6/7 |
 | Save/load | Not started | 1 (minimal) → 6 (full) |
 | UI | Bootstrap-only debug list | 1 → 6 |
 | Audio/VFX | Not started (placeholder policy defined) | 6 |

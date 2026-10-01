@@ -603,3 +603,76 @@ shared directly in the pull request/chat as verification evidence.
   verification runs, so the toast itself wasn't re-captured — its
   "shown once" behavior is what the automated test specifically
   targets instead).
+
+## MVP 7 automated checks (all run and passing at time of writing)
+
+All 28 suites in `tests/` pass with `godot4 --headless --fixed-fps 600
+--path . --script res://tests/<name>.gd`, exit 0.
+
+30. **Release validation** (`tests/test_mvp7_release_validation.gd`):
+    - Safe-zone exploit fix: a unit standing inside a safe zone deals
+      zero damage attempting to fire at an unprotected target outside
+      it, and cannot throw a grenade at all while inside.
+    - Out-of-ammo: a unit with exactly 1 round loaded and 0 reserve
+      lands that one hit, then deals no further damage and never
+      enters an unfinishable reload loop.
+    - Orphan-node stability: 50 units spawned then killed via
+      `_die()` leave the parent node's child count back at its
+      pre-test baseline after a few frames.
+    Exit 0, `[Tests] mvp7_release_validation: all passed.`
+31. **Victory/defeat, extended** (`tests/test_mvp6_victory_defeat.gd`,
+    2 new subtests added this MVP): confirms `_spawn_rival_factions()`
+    actually registers exactly 3 real rival Main Characters per
+    campaign (the other 3 campaigns), each alive, stationary by
+    design, with that faction's own `mc_unit` data (not the player's);
+    and that killing all 3 via ordinary `BwUnit._die()` — no test-only
+    shortcut — triggers a real VICTORY screen. The existing
+    generic-logic subtests were updated to call a new
+    `clear_enemy_mc_registry_for_test()` so they stay isolated from
+    these new real spawns.
+
+Reporting tools (not pass/fail gates, run manually):
+- `tools/run_balance_report.gd` — full MVP7 balance report (match
+  duration, win rate, income/min, army size, ambush/DEA frequency,
+  vehicle/special-unit effectiveness pointers, MC survival rate,
+  Easy/Medium/Hard). Captured output + interpretation:
+  `docs/BALANCE.md` "MVP7 release candidate balance report".
+- `tools/profile_near_cap_multi_faction.gd` — 4-faction, 40-unit,
+  live-combat FPS/orphan-node profile, run in real wall-clock time
+  (no `--fixed-fps`). Captured output: `docs/BALANCE.md` "MVP7
+  performance report".
+
+## MVP7 manual visual verification
+
+Xvfb + Mesa llvmpipe, same approach as every prior MVP, this time via
+a temporary debug-only autoload (added and removed for this
+verification only, same pattern MVP5 used for its own overlay
+screenshot) driving the camera to a rival-faction HQ region after
+spawning. Confirmed: 3 real rival Main Characters (their own faction's
+`mc_unit` stats, `can_move = false`) render in-world at their
+respective HQ regions and appear correctly on the minimap as hostile
+(red) markers, matching `_enemy_mc_registry`'s reported size of 3.
+
+Separately, this MVP's exported Linux build (`builds/linux/
+BadWorld.x86_64`, from the committed `export_presets.cfg`) was run
+headful under Xvfb and screenshotted, confirming the actual exported/
+packaged binary — not the editor — boots and renders the real Content
+Warning screen, satisfying "jalankan build hasil export, bukan hanya
+editor" for at least one platform (Windows could not be executed in
+this sandbox; see `docs/RELEASE_CANDIDATE_REPORT.md`).
+
+## Known gaps not covered by MVP7 tests
+
+- No automated test exercises the Windows `.exe` at all (could not run
+  under this sandbox's Wine/gVisor combination); only structural
+  validity (`file` reporting a correct PE32+ x86-64 executable) and the
+  Linux export's actual runtime were confirmed.
+- No automated test for rogue/surrender/flee behavior, since that
+  feature does not exist yet (see `docs/RELEASE_CANDIDATE_REPORT.md`
+  "Not yet done").
+- The balance report's vehicle-purchase-rate anomaly for Campaign
+  Fauzi (0% across 9 trials) is reported but not root-caused by any
+  test in this pass.
+- Performance was measured once (two runs for consistency) on this
+  sandbox's own shared/virtualized CPU, not on representative end-user
+  hardware.
