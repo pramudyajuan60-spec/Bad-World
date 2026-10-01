@@ -7,9 +7,21 @@ incrementally through a sequence of MVPs defined in
 `Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
 `Part 9.txt` (MVP 7, release candidate).
 
-**Current status: MVP 0 — Repository Audit and Godot Bootstrap.**
-No gameplay exists yet; see docs/IMPLEMENTATION_PLAN.md for the roadmap
-and docs/REPO_AUDIT.md for what MVP 0 actually verified.
+**Current status: MVP 1 — Juan Bellarosa Core RTS Vertical Slice.**
+Main menu → campaign/difficulty select → story panel → one playable
+isometric test map (Juan + 3×B1 vs. a dummy enemy squad). See
+docs/IMPLEMENTATION_PLAN.md for the full roadmap and what each MVP
+delivered.
+
+## Controls (MVP 1 gameplay)
+
+- Left click: select one unit. Shift+click: add/remove from selection.
+  Drag: box select. Double-click: select all visible units of that tier.
+- Right click ground: move (formation-spaced). Right click enemy: attack.
+- `A` then right click: attack-move. `S`: stop.
+- `Ctrl`+1‑9: assign control group. 1‑9: recall control group.
+- Arrow keys / mouse near screen edge: pan camera. Mouse wheel: zoom.
+- `Escape`: pause menu (resume / restart / save / load / quit to menu).
 
 ## Running the project
 
