@@ -27,6 +27,13 @@ extends Node2D
 ##   Escape                pause menu (emits pause_requested)
 
 signal pause_requested
+## MVP6: lightweight hooks so TutorialController can show a one-time
+## contextual hint the first time a player actually issues each order
+## type, without this file needing to know anything about tutorials.
+signal move_order_issued
+signal defend_order_issued
+signal patrol_order_issued
+signal vehicle_enter_order_issued
 
 var camera: RtsCamera
 var selection_manager: SelectionManager
@@ -162,6 +169,7 @@ func _handle_right_click(pos: Vector2) -> void:
 		for u in selected:
 			if u.mounted_vehicle == null:
 				u.order_enter_vehicle(vehicle)
+		vehicle_enter_order_issued.emit()
 		_attack_move_armed = false
 		_grenade_armed = false
 		_recruit_armed = false
@@ -170,6 +178,7 @@ func _handle_right_click(pos: Vector2) -> void:
 		for u in selected:
 			u.order_patrol(pos)
 		_spawn_destination_marker(pos)
+		patrol_order_issued.emit()
 		_patrol_armed = false
 		_attack_move_armed = false
 		_grenade_armed = false
@@ -188,6 +197,7 @@ func _handle_right_click(pos: Vector2) -> void:
 			else:
 				u.order_move(positions[i])
 		_spawn_destination_marker(pos)
+		move_order_issued.emit()
 	_attack_move_armed = false
 	_grenade_armed = false
 	_recruit_armed = false
@@ -230,34 +240,39 @@ func _find_nearest_vehicle(pos: Vector2):
 
 
 func _handle_key(event: InputEventKey) -> void:
-	match event.keycode:
-		KEY_S:
-			for u in selection_manager.selected:
-				u.order_stop()
-		KEY_A:
-			_attack_move_armed = true
-		KEY_D:
-			for u in selection_manager.selected:
-				u.order_defend()
-		KEY_G:
-			_grenade_armed = true
-		KEY_R:
-			_recruit_armed = true
-		KEY_P:
-			_patrol_armed = true
-		KEY_X:
-			for u in selection_manager.selected:
-				if u.mounted_vehicle != null:
-					u.mounted_vehicle.exit_unit(u)
-		KEY_ESCAPE:
-			pause_requested.emit()
-		_:
-			if event.keycode >= KEY_1 and event.keycode <= KEY_9:
-				var n: int = event.keycode - KEY_1 + 1
+	# MVP6: rebindable via InputMap actions (Prompt Dasar "Key
+	# rebinding") rather than hardcoded keycodes; defaults match the
+	# original MVP1/2/3 hotkeys exactly (see project.godot [input]).
+	if event.is_action_pressed("bw_stop"):
+		for u in selection_manager.selected:
+			u.order_stop()
+	elif event.is_action_pressed("bw_attack_move_arm"):
+		_attack_move_armed = true
+	elif event.is_action_pressed("bw_defend"):
+		for u in selection_manager.selected:
+			u.order_defend()
+		if not selection_manager.selected.is_empty():
+			defend_order_issued.emit()
+	elif event.is_action_pressed("bw_grenade_arm"):
+		_grenade_armed = true
+	elif event.is_action_pressed("bw_recruit_arm"):
+		_recruit_armed = true
+	elif event.is_action_pressed("bw_patrol_arm"):
+		_patrol_armed = true
+	elif event.is_action_pressed("bw_exit_vehicle"):
+		for u in selection_manager.selected:
+			if u.mounted_vehicle != null:
+				u.mounted_vehicle.exit_unit(u)
+	elif event.is_action_pressed("bw_pause"):
+		pause_requested.emit()
+	else:
+		for n in range(1, 10):
+			if event.is_action_pressed("bw_group_%d" % n):
 				if event.ctrl_pressed:
 					selection_manager.assign_control_group(n)
 				else:
 					selection_manager.recall_control_group(n)
+				break
 
 
 func _find_nearest_in(pos: Vector2, units: Array, max_dist: float) -> BwUnit:

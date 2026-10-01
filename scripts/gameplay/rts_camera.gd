@@ -34,13 +34,13 @@ func _apply_bounds() -> void:
 
 func _process(delta: float) -> void:
 	var dir := Vector2.ZERO
-	if Input.is_physical_key_pressed(KEY_LEFT):
+	if Input.is_action_pressed("bw_cam_left"):
 		dir.x -= 1
-	if Input.is_physical_key_pressed(KEY_RIGHT):
+	if Input.is_action_pressed("bw_cam_right"):
 		dir.x += 1
-	if Input.is_physical_key_pressed(KEY_UP):
+	if Input.is_action_pressed("bw_cam_up"):
 		dir.y -= 1
-	if Input.is_physical_key_pressed(KEY_DOWN):
+	if Input.is_action_pressed("bw_cam_down"):
 		dir.y += 1
 
 	var vp := get_viewport()

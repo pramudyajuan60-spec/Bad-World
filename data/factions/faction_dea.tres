@@ -15,3 +15,7 @@ uses_armory_instead_of_gun_shop = true
 starting_factory_level = 0
 factory_value_mult = 1.0
 factory_speed_mult = 1.0
+strengths = Array[String](["Strongest individual units of the four factions", "Starts with 900 Parts and a DEA Armory that crafts weapons without Gun Shop money", "City Patrol generates passive income from idle patrolling units", "Can call a budgeted Allied DEA dispatch instead of facing hostile Heat/DEA waves"])
+weaknesses = Array[String](["No B1 tier at all (more expensive roster floor, B2 minimum)", "No Factory/Dealer economy loop — no cartel cargo income", "Lowest max roster of the four factions (24 vs 30)"])
+economy_rating_stars = 3
+economy_rating_label = "No Factory/Dealer loop — relies on City Patrol income and Armory crafting instead"

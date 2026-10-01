@@ -7,26 +7,26 @@ incrementally through a sequence of MVPs defined in
 `Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
 `Part 9.txt` (MVP 7, release candidate).
 
-**Current status: MVP 5 — Intelligent AI and Diplomacy.**
-Layered AI is implemented: a per-unit TACTICAL layer (target priority,
-flanking, proactive retreat, revive, protect-MC, grenade avoidance) and
-a per-faction STRATEGIC layer (recruitment, ammo/weapon resupply,
-factory upgrades, dealer selection, cash-running to the Bank,
-vehicle purchase/repair, HQ defense, scouting, and utility-gated
-raid/attack-MC decisions), both driven by real fog-of-war
-(`FactionKnowledge` — enemies are only known if actually seen, with
-last-known-position memory and staleness). A separate `AmbushController`
-arms and triggers ambushes only with intel + a real tactical advantage,
-and a `DiplomacyController` handles neutral encounters, trust, temporary
-alliances with a trade bonus, and betrayal. Difficulty (Easy/Medium/
-Hard) only changes decision quality/timing, never money or vision — a
-same-faction cross-difficulty test shows Hard beating Medium 3/3 and
-Medium beating Easy 3/3. A dev-only F3 debug overlay (structurally
-absent from release exports) shows live AI state/objective/utility, and
-a headless `AiMatchArena` runs full AI-vs-AI matches with a win-rate
-report per faction/difficulty — see docs/BALANCE.md. Layered on top of
-MVP4's four asymmetric campaigns, MVP3's open-world economy/vehicle
-loop, and MVP1/2's RTS controls and weapon-data combat.
+**Current status: MVP 6 — Campaign Presentation and User Experience.**
+A content warning now opens the app, followed by a Main Menu →
+Campaign Select (full cards: portrait, faction, strengths/weaknesses,
+starting units, economy rating, unit cap) → Difficulty → Story → the
+open world. A contextual tutorial teaches the core loop (selection,
+movement, recruitment, equipment, ammo, factory/dealer/bank, vehicle,
+patrol, defend, protecting the Main Character) with each hint shown
+once. The HUD gained payroll/low-ammo warnings, a factory/dealer
+demand readout, a Nabil-only patrol-efficiency overlay, a diplomacy
+panel, and an off-screen "Under Attack" camera alert. Settings now has
+real volume sliders (Master/Music/SFX) and full key rebinding; saves
+gained a dedicated autosave slot plus 3 independent manual slots with
+schema migration; and the player's Main Character dying now shows a
+DEFEAT screen with a full campaign summary (the matching VICTORY rule
+is implemented and tested the same way, but isn't reachable yet since
+rival faction HQs aren't live in the open world — see
+docs/PLACEHOLDER_REGISTER.md). Layered on top of MVP5's layered
+TACTICAL/STRATEGIC/INFORMATION/AMBUSH/DIPLOMACY AI, MVP4's four
+asymmetric campaigns, MVP3's open-world economy/vehicle loop, and
+MVP1/2's RTS controls and weapon-data combat.
 See docs/IMPLEMENTATION_PLAN.md for the full roadmap and what each MVP
 delivered.
 
@@ -62,7 +62,12 @@ delivered.
   cooldown).
 - `Ctrl`+1‑9: assign control group. 1‑9: recall control group.
 - Arrow keys / mouse near screen edge: pan camera. Mouse wheel: zoom.
-- `Escape`: pause menu (resume / restart / save / load / quit to menu).
+- `Escape`: pause menu (resume / restart / Save-Load slot picker /
+  Settings / quit to menu).
+- All of the above letter-key hotkeys are rebindable (Pause → Settings
+  → Controls tab, or Main Menu → Settings), via real `InputMap`
+  actions rather than hardcoded keys; this list shows each action's
+  default key.
 - HUD buttons (top-right): **Inspect** (view the selected unit and
   manually assign purchased equipment — nothing auto-equips) and
   **Alerts** (recent combat/economy log). Recruitment and Gun Shop are

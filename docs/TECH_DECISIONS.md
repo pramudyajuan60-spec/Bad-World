@@ -413,3 +413,54 @@ exporter could forget to flip). `AiDebugOverlay._ready()` calls
 `queue_free()` on itself immediately when this is true, so it
 structurally cannot exist in a release export regardless of whether a
 developer remembers to hide it.
+
+### MVP6: tutorial "seen" state and audio/keybind prefs are install-wide, not per-save
+
+Prompt Dasar's acceptance criterion is "pemain baru dapat memahami
+loop dasar melalui tutorial" (a *new player* can learn the loop) — not
+"every new campaign re-teaches the loop". `TutorialController`'s "seen
+hint" set, and `UserPrefsService`'s volume/keybind overrides, are
+stored in a small separate `user://user_prefs.json` file keyed by
+nothing but the local install, not inside `SaveService`'s per-slot
+save data. A returning player who starts a second campaign (or loads a
+different save slot) does not see the same 10 hints again; a brand new
+player does, exactly once, regardless of which campaign they pick
+first. Documented assumption, not a bug.
+
+### MVP6 victory condition is implemented and tested, but not reachable by playing yet
+
+Prompt Dasar's VICTORY DAN DEFEAT rule (cartel wins when every rival
+MC is dead; Nabil additionally needs every cartel factory shut down)
+is implemented in full in `open_world_map.gd::_check_victory_condition`
+against a generic `_enemy_mc_registry: Array`. Nothing in the live
+open-world scene ever appends to that registry, because no rival
+faction MC is spawned there yet (`PLACEHOLDER_rival_faction_hqs`,
+docs/PLACEHOLDER_REGISTER.md) — the exact same gap MVP5 already
+documented for its own mobile AI. `tests/test_mvp6_victory_defeat.gd`
+proves the rule itself is correct (including Nabil's extra factory
+condition) by registering a fake enemy MC directly, via a narrow
+`register_enemy_mc_for_test()`/`force_check_victory_for_test()` seam
+(same pattern as the pre-existing `gather_save_data_for_test()`).
+DEFEAT (the player's own MC dying) has no such gap and is fully
+reachable by actually playing.
+
+### Fixed: `BwUnit.died` signal double-argument bug broke all death cleanup
+
+`signal died(unit)` already carries the dying unit as its own
+argument (emitted as `died.emit(self)`). Three call sites connected it
+as `u.died.connect(_on_x.bind(u))` — `SelectionManager.register_unit`,
+and two enemy-unit spawn paths in `open_world_map.gd`
+(`_spawn_fresh`'s dummy squad and `_apply_save_data`'s loaded enemy
+units). Godot delivers the signal's own argument *and* the bound one,
+so a 1-parameter handler received 2 arguments; the connection fails
+silently (Godot logs a swallowed `Method expected 1 arguments, but
+called with 2` error, the callback body never runs). In practice this
+meant **no player or enemy unit was ever actually removed from
+`SelectionManager.player_units`/`selected`/control groups, or from the
+map's enemy-units cache, on death** — a real, pre-existing correctness
+bug, not something introduced by MVP6. Found by
+`tests/test_mvp6_victory_defeat.gd` (the first test to call
+`BwUnit._die()` directly on a `SelectionManager`-registered unit and
+assert on the resulting state). Fixed at all three sites by dropping
+the redundant `.bind(...)` — the signal's own argument already is the
+unit every one of these handlers needed.

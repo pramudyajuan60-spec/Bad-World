@@ -31,3 +31,17 @@ extends Resource
 @export var starting_factory_level: int = 1
 @export var factory_value_mult: float = 1.0
 @export var factory_speed_mult: float = 1.0
+
+## MVP6 campaign-selection summary fields (Prompt Dasar "Campaign
+## selection": "keunggulan", "kelemahan", "economy rating"). Derived
+## entirely from this faction's own already-shipped, tested mechanics
+## above (and docs/BALANCE.md) — not new lore, just a UI-facing
+## restatement of facts already true in MVP3/4/5's gameplay code.
+@export var strengths: Array[String] = []
+@export var weaknesses: Array[String] = []
+## 1 (slowest) .. 5 (fastest) heuristic derived from
+## factory_value_mult * factory_speed_mult (and, for Nabil, the fact
+## that there is no Factory/Dealer loop at all) — a relative UI label,
+## not a new balance claim.
+@export_range(1, 5) var economy_rating_stars: int = 3
+@export var economy_rating_label: String = ""

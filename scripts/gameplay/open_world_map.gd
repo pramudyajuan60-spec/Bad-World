@@ -32,6 +32,7 @@ const ARMORY_PANEL_SCRIPT := preload("res://scripts/ui/armory_panel.gd")
 const ABILITY_BAR_SCRIPT := preload("res://scripts/ui/ability_bar.gd")
 const KNOWLEDGE_SCRIPT := preload("res://scripts/ai/faction_knowledge.gd")
 const AI_DEBUG_OVERLAY_SCENE := preload("res://scenes/ui/AiDebugOverlay.tscn")
+const TUTORIAL_CONTROLLER_SCRIPT := preload("res://scripts/gameplay/tutorial_controller.gd")
 
 ## Open world bounds, large enough to fit 4 region HQs + Central City
 ## with real travel distance between them.
@@ -82,6 +83,7 @@ const REGION_BY_CAMPAIGN := {
 @onready var heat_manager = $HeatManager
 @onready var hud = $HUD/SelectionHud
 @onready var pause_menu = $PauseMenu
+@onready var victory_defeat_screen = $VictoryDefeatScreen
 @onready var hud_layer: CanvasLayer = $HUD
 
 var recruitment_panel: Control
@@ -101,6 +103,42 @@ var _minimap: Control
 var _alert_panel: Control
 var _alert_label: Label
 var _combat_log: Node = null
+var _save_slot_panel: Control
+var _settings_panel: Control
+var _payroll_warning_label: Label
+var _payroll_warning_timer: float = 0.0
+var _low_ammo_label: Label
+var _demand_panel: Control
+var _demand_label: Label
+var _patrol_panel: Control
+var _patrol_label: Label
+var _diplomacy_panel: Control
+var _diplomacy_label: Label
+var _camera_alert_panel: Control
+var _camera_alert_label: Label
+var _camera_alert_target_pos: Vector2 = Vector2.ZERO
+var _camera_alert_timer: float = 0.0
+var _last_hp_ratio: Dictionary = {}
+var _tutorial: Node = null
+var _tutorial_panel: Control
+var _tutorial_title_label: Label
+var _tutorial_body_label: Label
+const SAVE_SLOT_PANEL_SCRIPT := preload("res://scripts/ui/save_slot_panel.gd")
+const SETTINGS_PANEL_SCRIPT := preload("res://scripts/ui/settings_panel.gd")
+const VICTORY_DEFEAT_SCREEN_SCENE := preload("res://scenes/gameplay/VictoryDefeatScreen.tscn")
+const AUTOSAVE_INTERVAL_SEC := 90.0
+var _autosave_timer: float = 0.0
+## MVP6 campaign-summary stats (Prompt Dasar "campaign summary").
+var elapsed_play_sec: float = 0.0
+var enemies_eliminated_count: int = 0
+var _victory_defeat_screen: Node = null
+var _mission_over: bool = false
+## Populated only if/when a rival faction Main Character is ever
+## spawned in this live map (not yet — see docs/PLACEHOLDER_REGISTER.md
+## "Rival faction HQs"); kept generic and tested in isolation
+## (tests/test_mvp6_victory_defeat.gd) so the victory condition is
+## correct and ready the moment that content lands.
+var _enemy_mc_registry: Array = []
 ## MVP5: dev-only fog-of-war feed for this map's fixed hostile
 ## encounters (the "Hostile (PLACEHOLDER)" test squad + DEA response
 ## waves), exposed only through the F3 debug overlay. These squads are
@@ -142,7 +180,7 @@ func _ready() -> void:
 	# "Save/load must resolve the campaign before faction-specific setup").
 	var pending_slot := GameState.pending_load_slot
 	var loaded_save_data = null
-	if pending_slot >= 1 and SaveService.has_save(pending_slot):
+	if pending_slot >= 0 and SaveService.has_save(pending_slot):
 		loaded_save_data = SaveService.load_game(pending_slot)
 		if loaded_save_data != null and loaded_save_data.has("campaign_id"):
 			GameState.current_campaign_id = StringName(String(loaded_save_data["campaign_id"]))
@@ -158,6 +196,7 @@ func _ready() -> void:
 	camera.bounds = MAP_BOUNDS
 
 	economy.set_money(current_campaign.starting_money)
+	economy.lifetime_money_earned = 0 # starting funds aren't "earned"
 	economy.max_roster = current_faction.max_roster
 	economy.configure_roster(current_campaign)
 	_build_buildings()
@@ -170,6 +209,8 @@ func _ready() -> void:
 	heat_manager.wave_dispatched.connect(_on_dea_wave_dispatched)
 
 	_hostile_knowledge = KNOWLEDGE_SCRIPT.new()
+	_tutorial = TUTORIAL_CONTROLLER_SCRIPT.new()
+	add_child(_tutorial)
 	_hostile_knowledge.owner_faction_side = &"hostile_shared"
 	_hostile_knowledge.own_units_getter = Callable(self, "_get_hostile_units")
 	_hostile_knowledge.world_units_getter = Callable(self, "_get_player_side_units")
@@ -187,14 +228,18 @@ func _ready() -> void:
 	command_controller.destination_marker_scene = DEST_MARKER_SCENE
 	command_controller.pause_requested.connect(_toggle_pause)
 	command_controller.vehicles_getter = Callable(self, "_get_all_vehicles")
+	command_controller.move_order_issued.connect(func(): _tutorial.request(&"movement"))
+	command_controller.defend_order_issued.connect(func(): _tutorial.request(&"defend"))
+	command_controller.patrol_order_issued.connect(func(): _tutorial.request(&"patrol"))
+	command_controller.vehicle_enter_order_issued.connect(func(): _tutorial.request(&"vehicle"))
 
 	selection_manager.selection_updated.connect(_on_selection_updated)
 
 	pause_menu.visible = false
 	pause_menu.resume_requested.connect(_toggle_pause)
 	pause_menu.restart_requested.connect(_on_restart)
-	pause_menu.save_requested.connect(_on_save)
-	pause_menu.load_requested.connect(_on_load)
+	pause_menu.save_load_requested.connect(_on_save_load_requested)
+	pause_menu.settings_requested.connect(_on_settings_requested)
 	pause_menu.quit_to_menu_requested.connect(_on_quit_to_menu)
 
 	_build_hud_extras()
@@ -206,9 +251,13 @@ func _ready() -> void:
 		_spawn_fresh()
 
 	_refresh_enemy_units_cache()
+	_tutorial.request(&"mc_protection")
 
 
 func _process(delta: float) -> void:
+	if _mission_over:
+		return
+	elapsed_play_sec += delta
 	economy.payroll_units = units_root.get_children().filter(func(c): return c is BwUnit and is_instance_valid(c))
 	if _topbar_label:
 		_topbar_label.text = "Money: $%d   Roster: %d/%d + MC   Cargo carried: %d   Cash carried: $%d" % [
@@ -226,8 +275,28 @@ func _process(delta: float) -> void:
 		_update_triad_synergy()
 	if current_faction.uses_armory_instead_of_gun_shop:
 		_apply_nabil_patrol_income(delta)
+		_refresh_patrol_panel()
 	if ability_bar:
 		ability_bar.refresh()
+
+	_refresh_low_ammo_warning()
+	_refresh_demand_panel()
+	_refresh_diplomacy_panel()
+	_check_victory_condition()
+
+	if _payroll_warning_timer > 0.0:
+		_payroll_warning_timer -= delta
+		if _payroll_warning_timer <= 0.0 and _payroll_warning_label:
+			_payroll_warning_label.visible = false
+	if _camera_alert_timer > 0.0:
+		_camera_alert_timer -= delta
+		if _camera_alert_timer <= 0.0 and _camera_alert_panel:
+			_camera_alert_panel.visible = false
+
+	_autosave_timer += delta
+	if _autosave_timer >= AUTOSAVE_INTERVAL_SEC:
+		_autosave_timer = 0.0
+		_run_autosave()
 
 
 ## MVP4: Zie's Triad Synergy (Prompt Dasar "AKTIF jika ketiganya hidup
@@ -478,7 +547,7 @@ func _build_hud_extras() -> void:
 
 	var inspect_btn := Button.new()
 	inspect_btn.text = "Inspect"
-	inspect_btn.pressed.connect(func(): _toggle_panel(inspect_panel))
+	inspect_btn.pressed.connect(func(): _toggle_panel(inspect_panel); _tutorial.request(&"equipment"))
 	button_row.add_child(inspect_btn)
 
 	var alert_btn := Button.new()
@@ -589,6 +658,130 @@ func _build_hud_extras() -> void:
 	_minimap.draw.connect(_draw_minimap)
 	hud_layer.add_child(_minimap)
 
+	# MVP6: Save/Load slot picker + Settings, both reachable from the
+	# Pause Menu, exact same panel scripts SettingsMenu.tscn hosts.
+	_save_slot_panel = PanelContainer.new()
+	_save_slot_panel.set_script(SAVE_SLOT_PANEL_SCRIPT)
+	_save_slot_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_save_slot_panel.position = Vector2(-280, -210)
+	_save_slot_panel.visible = false
+	hud_layer.add_child(_save_slot_panel)
+	_save_slot_panel.closed.connect(func(): _save_slot_panel.visible = false)
+	_save_slot_panel.save_to_slot_requested.connect(_on_save_to_slot)
+	_save_slot_panel.load_slot_requested.connect(_on_load_slot)
+
+	_settings_panel = PanelContainer.new()
+	_settings_panel.set_script(SETTINGS_PANEL_SCRIPT)
+	_settings_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_settings_panel.position = Vector2(-280, -260)
+	_settings_panel.visible = false
+	hud_layer.add_child(_settings_panel)
+	_settings_panel.closed.connect(func(): _settings_panel.visible = false)
+
+	# MVP6 Payroll warning (Prompt Dasar item 8): flashes on a missed
+	# payroll cycle rather than only appearing as one Alerts-log line.
+	_payroll_warning_label = Label.new()
+	_payroll_warning_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_payroll_warning_label.position = Vector2(0, 110)
+	_payroll_warning_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_payroll_warning_label.modulate = Color(1.0, 0.3, 0.25)
+	_payroll_warning_label.visible = false
+	hud_layer.add_child(_payroll_warning_label)
+	economy.payroll_processed.connect(_on_payroll_processed)
+
+	# MVP6 Low-ammo warning (item 9): watches the current selection.
+	_low_ammo_label = Label.new()
+	_low_ammo_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_low_ammo_label.position = Vector2(20, 110)
+	_low_ammo_label.modulate = Color(1.0, 0.6, 0.15)
+	_low_ammo_label.visible = false
+	hud_layer.add_child(_low_ammo_label)
+
+	# MVP6 Factory/dealer demand UI (item 10).
+	_demand_panel = PanelContainer.new()
+	_demand_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_demand_panel.position = Vector2(20, 150)
+	_demand_panel.custom_minimum_size = Vector2(280, 110)
+	hud_layer.add_child(_demand_panel)
+	_demand_label = Label.new()
+	_demand_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_demand_panel.add_child(_demand_label)
+
+	# MVP6 Patrol efficiency overlay (item 11): Nabil-only, since only
+	# Nabil's City Patrol has an income-efficiency mechanic to show.
+	if current_faction.uses_armory_instead_of_gun_shop:
+		_patrol_panel = PanelContainer.new()
+		_patrol_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_patrol_panel.position = Vector2(20, 266)
+		_patrol_panel.custom_minimum_size = Vector2(280, 90)
+		hud_layer.add_child(_patrol_panel)
+		_patrol_label = Label.new()
+		_patrol_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		_patrol_panel.add_child(_patrol_label)
+
+	# MVP6 Diplomacy UI (item 12). The live open world only has one
+	# active live faction (the player's) plus DEA Heat response and a
+	# fixed non-faction hostile encounter — real multi-faction
+	# trust/alliance diplomacy (scripts/diplomacy/diplomacy_controller.gd)
+	# only has a second live faction to negotiate with inside
+	# AiMatchArena (see docs/TECH_DECISIONS.md "MVP5 live-game AI
+	# scope"). This panel honestly shows what *is* live right now
+	# (Heat/DEA attention) rather than fabricating an alliance UI with
+	# nothing behind it.
+	_diplomacy_panel = PanelContainer.new()
+	_diplomacy_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_diplomacy_panel.position = Vector2(-420, 300)
+	_diplomacy_panel.custom_minimum_size = Vector2(400, 90)
+	hud_layer.add_child(_diplomacy_panel)
+	_diplomacy_label = Label.new()
+	_diplomacy_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_diplomacy_panel.add_child(_diplomacy_label)
+
+	# MVP6 camera alert (item 14): "Under Attack" banner with a Jump
+	# button when a player unit off-screen takes damage.
+	_camera_alert_panel = PanelContainer.new()
+	_camera_alert_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_camera_alert_panel.position = Vector2(-140, 150)
+	_camera_alert_panel.visible = false
+	hud_layer.add_child(_camera_alert_panel)
+	var alert_box := HBoxContainer.new()
+	_camera_alert_panel.add_child(alert_box)
+	_camera_alert_label = Label.new()
+	_camera_alert_label.text = "Under Attack!"
+	_camera_alert_label.modulate = Color(1.0, 0.3, 0.3)
+	alert_box.add_child(_camera_alert_label)
+	var jump_btn := Button.new()
+	jump_btn.text = "Jump To"
+	jump_btn.pressed.connect(_on_camera_alert_jump_pressed)
+	alert_box.add_child(jump_btn)
+
+	victory_defeat_screen.restart_requested.connect(_on_restart)
+	victory_defeat_screen.load_requested.connect(func(): _on_load_slot(SaveService.most_recent_slot()))
+	victory_defeat_screen.quit_to_menu_requested.connect(_on_quit_to_menu)
+
+	# MVP6 contextual tutorial toast (item 4).
+	_tutorial_panel = PanelContainer.new()
+	_tutorial_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_tutorial_panel.position = Vector2(-260, -280)
+	_tutorial_panel.custom_minimum_size = Vector2(520, 0)
+	_tutorial_panel.visible = false
+	hud_layer.add_child(_tutorial_panel)
+	var tutorial_box := VBoxContainer.new()
+	tutorial_box.add_theme_constant_override("separation", 6)
+	_tutorial_panel.add_child(tutorial_box)
+	_tutorial_title_label = Label.new()
+	_tutorial_title_label.add_theme_font_size_override("font_size", 18)
+	tutorial_box.add_child(_tutorial_title_label)
+	_tutorial_body_label = Label.new()
+	_tutorial_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_tutorial_body_label.custom_minimum_size = Vector2(500, 0)
+	tutorial_box.add_child(_tutorial_body_label)
+	var tutorial_dismiss_btn := Button.new()
+	tutorial_dismiss_btn.text = "Got it"
+	tutorial_dismiss_btn.pressed.connect(_on_tutorial_dismiss_pressed)
+	tutorial_box.add_child(tutorial_dismiss_btn)
+	_tutorial.hint_shown.connect(_on_tutorial_hint_shown)
+
 
 func _on_log_event(_text: String) -> void:
 	_refresh_alert_text()
@@ -675,7 +868,7 @@ func _spawn_fresh() -> void:
 		e.primary_reserve = 999 # dummy encounters get abundant ammo; see docs/TECH_DECISIONS.md
 		e.position = enemy_positions[i]
 		enemies_root.add_child(e)
-		e.died.connect(_on_enemy_died.bind(e))
+		e.died.connect(_on_enemy_died) # died(unit) already supplies e; see selection_manager.gd fix note
 
 
 func _make_unit(id: StringName, name_: String, tier: String, side: StringName, movable: bool) -> BwUnit:
@@ -703,6 +896,10 @@ func _make_unit(id: StringName, name_: String, tier: String, side: StringName, m
 			u.move_speed_px = 190.0
 	u.recruit_completed.connect(_on_recruit_completed)
 	u.loot_dropped.connect(_on_loot_dropped)
+	if side == &"player":
+		u.hp_changed.connect(_on_player_unit_hp_changed)
+		if tier == "MC":
+			u.died.connect(_on_player_mc_died)
 	return u
 
 
@@ -721,6 +918,7 @@ func _on_loot_dropped(pos: Vector2, cargo: int, cash: int) -> void:
 
 
 func _on_unit_recruited(tier: String) -> void:
+	_tutorial.request(&"recruitment")
 	var u := _make_unit(&"recruit_%d" % Time.get_ticks_msec(), tier, tier, &"player", true)
 	u.position = RECRUITMENT_POS + Vector2(randf_range(-30, 30), randf_range(-30, 30))
 	units_root.add_child(u)
@@ -817,6 +1015,7 @@ func _on_recruit_completed(recruiter: BwUnit, target: BwUnit) -> void:
 
 
 func _on_enemy_died(_e) -> void:
+	enemies_eliminated_count += 1
 	call_deferred("_refresh_enemy_units_cache")
 
 
@@ -845,13 +1044,15 @@ func _get_player_side_units() -> Array:
 ## deposit, garage repair/buy, recruitment/gun shop panel toggle.
 ## ---------------------------------------------------------------
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+	if event.is_action_pressed("bw_interact"):
 		_handle_interact()
 	# MVP5 debug overlay toggle (Prompt Dasar: "Debug overlay tidak
 	# muncul pada release build"); the overlay's own _ready() already
 	# frees itself in a release export, so this key simply does
-	# nothing there since the node no longer exists.
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F3 and is_instance_valid(_ai_debug_overlay):
+	# nothing there since the node no longer exists. MVP6: rebindable
+	# via bw_toggle_debug_overlay (default F3), same as every other
+	# gameplay hotkey.
+	if event.is_action_pressed("bw_toggle_debug_overlay") and is_instance_valid(_ai_debug_overlay):
 		_ai_debug_overlay.visible = not _ai_debug_overlay.visible
 
 
@@ -861,13 +1062,16 @@ func _handle_interact() -> void:
 		return
 	if unit in factory.get_units_in_range():
 		factory.try_pickup(unit)
+		_tutorial.request(&"factory_dealer_bank")
 		return
 	for d in dealers:
 		if unit in d.get_units_in_range():
 			d.start_sell(unit, economy, factory.cargo_value())
+			_tutorial.request(&"factory_dealer_bank")
 			return
 	if unit in bank.get_units_in_range():
 		bank.start_deposit(unit)
+		_tutorial.request(&"factory_dealer_bank")
 		return
 	if recruitment_building.has_player_in_range():
 		recruitment_building.toggle_panel()
@@ -994,11 +1198,175 @@ func _on_dea_wave_dispatched(wave_number: int) -> void:
 
 func _on_selection_updated(units: Array) -> void:
 	hud.show_unit(units[0] if units.size() > 0 else null)
+	if not units.is_empty():
+		_tutorial.request(&"selection")
 
 
 func _toggle_pause() -> void:
 	pause_menu.visible = not pause_menu.visible
 	get_tree().paused = pause_menu.visible
+
+
+## ---------------------------------------------------------------
+## MVP6 HUD warnings/overlays (payroll, low ammo, factory/dealer
+## demand, patrol efficiency, diplomacy, camera alerts).
+## ---------------------------------------------------------------
+func _on_payroll_processed(paid: bool, total_due: int) -> void:
+	if paid or not _payroll_warning_label:
+		return
+	_payroll_warning_label.text = "PAYROLL MISSED — $%d due. Morale is dropping across the roster." % total_due
+	_payroll_warning_label.visible = true
+	_payroll_warning_timer = 6.0
+
+
+func _refresh_low_ammo_warning() -> void:
+	if not _low_ammo_label:
+		return
+	var warnings: Array = []
+	for u in selection_manager.selected:
+		if not is_instance_valid(u) or u.primary_weapon == null or not u.primary_weapon.uses_ammo:
+			continue
+		var total: int = u.primary_mag + u.primary_reserve
+		var max_total: int = u.primary_weapon.magazine_size + u.primary_weapon.reserve_ammo
+		if total <= 0:
+			warnings.append("%s: OUT OF AMMO" % u.display_name)
+		elif max_total > 0 and float(total) / float(max_total) <= 0.25:
+			warnings.append("%s: LOW AMMO" % u.display_name)
+	if warnings.is_empty():
+		_low_ammo_label.visible = false
+	else:
+		_low_ammo_label.text = "\n".join(warnings)
+		_low_ammo_label.visible = true
+		_tutorial.request(&"ammo")
+
+
+func _refresh_demand_panel() -> void:
+	if not _demand_label or factory == null:
+		return
+	var lines: Array = ["Factory (Lv %d): %d/%d cargo stored%s" % [
+		factory.level, factory.stored_cargo, factory.MAX_STORED_CARGO,
+		" [DESTROYED]" if factory.is_destroyed else "",
+	]]
+	for i in range(dealers.size()):
+		var d = dealers[i]
+		if not is_instance_valid(d):
+			continue
+		lines.append("%s demand: %d%%" % [d.dealer_label, int(d.current_demand_multiplier() * 100.0)])
+	_demand_label.text = "\n".join(lines)
+
+
+func _refresh_patrol_panel() -> void:
+	if not _patrol_label:
+		return
+	var patrolling: Array = units_root.get_children().filter(func(u): return u is BwUnit and is_instance_valid(u) and u.state == BwUnit.State.PATROLLING)
+	var snapshot: Array = economy.patrol_efficiency_snapshot(patrolling)
+	if snapshot.is_empty():
+		_patrol_label.text = "City Patrol: no units patrolling."
+		return
+	var lines: Array = ["City Patrol efficiency:"]
+	for entry in snapshot:
+		if entry["warmed_up"]:
+			lines.append("%s: %d%%" % [entry["name"], int(entry["efficiency"] * 100.0)])
+		else:
+			lines.append("%s: warming up (%.0fs)" % [entry["name"], entry["idle_sec"]])
+	_patrol_label.text = "\n".join(lines)
+
+
+func _refresh_diplomacy_panel() -> void:
+	if not _diplomacy_label:
+		return
+	_diplomacy_label.text = "DEA Heat response: wave %d/%d dispatched%s\nFull faction diplomacy (trust/alliance/betrayal) activates once rival factions are live in the open world." % [
+		heat_manager.waves_dispatched, HEAT_MANAGER_SCRIPT.MAX_WAVES,
+		" — in combat" if heat_manager.in_combat else "",
+	]
+
+
+func _on_player_unit_hp_changed(unit, ratio: float) -> void:
+	var id: int = unit.get_instance_id()
+	var prev: float = _last_hp_ratio.get(id, 1.0)
+	_last_hp_ratio[id] = ratio
+	if ratio >= prev or not is_instance_valid(unit):
+		return
+	if _is_on_screen(unit.global_position):
+		return
+	_camera_alert_target_pos = unit.global_position
+	_camera_alert_timer = 6.0
+	if _camera_alert_label:
+		_camera_alert_label.text = "Under Attack: %s!" % unit.display_name
+	if _camera_alert_panel:
+		_camera_alert_panel.visible = true
+
+
+func _is_on_screen(pos: Vector2) -> bool:
+	var vp := get_viewport()
+	if vp == null or camera == null:
+		return true
+	var half_size: Vector2 = (vp.get_visible_rect().size / maxf(camera.zoom.x, 0.01)) * 0.5
+	var rect := Rect2(camera.global_position - half_size, half_size * 2.0)
+	return rect.has_point(pos)
+
+
+func _on_camera_alert_jump_pressed() -> void:
+	camera.global_position = _camera_alert_target_pos
+	_camera_alert_panel.visible = false
+	_camera_alert_timer = 0.0
+
+
+func _on_tutorial_hint_shown(_id: StringName, title: String, body: String) -> void:
+	_tutorial_title_label.text = title
+	_tutorial_body_label.text = body
+	_tutorial_panel.visible = true
+
+
+func _on_tutorial_dismiss_pressed() -> void:
+	_tutorial_panel.visible = false
+	_tutorial.dismiss_current()
+
+
+## ---------------------------------------------------------------
+## MVP6 victory/defeat + campaign summary.
+## ---------------------------------------------------------------
+func _on_player_mc_died(_unit = null) -> void:
+	if _mission_over:
+		return
+	_mission_over = true
+	victory_defeat_screen.show_result(false, "%s was eliminated. The campaign is lost." % current_campaign.main_character_name, _build_campaign_summary_text())
+
+
+## Generic rule match (Prompt Dasar "VICTORY DAN DEFEAT"): cartels win
+## when every enemy Main Character is eliminated; Nabil additionally
+## requires no active cartel factory left standing. `_enemy_mc_registry`
+## is never populated by this live map yet (rival faction HQs are
+## still non-functional placeholders — see
+## docs/PLACEHOLDER_REGISTER.md), so this structurally cannot fire
+## here today; it is implemented and covered by
+## tests/test_mvp6_victory_defeat.gd against a fake registry so the
+## condition is correct and ready the moment rival MCs go live.
+func _check_victory_condition() -> void:
+	if _mission_over or _enemy_mc_registry.is_empty():
+		return
+	var all_enemy_mc_dead: bool = true
+	for mc in _enemy_mc_registry:
+		if is_instance_valid(mc) and mc.state != BwUnit.State.DEAD:
+			all_enemy_mc_dead = false
+			break
+	if not all_enemy_mc_dead:
+		return
+	if current_faction.uses_armory_instead_of_gun_shop:
+		if is_instance_valid(factory) and not factory.is_destroyed:
+			return # Nabil additionally needs every cartel factory shut down
+	_mission_over = true
+	victory_defeat_screen.show_result(true, "All rival Main Characters have been eliminated.", _build_campaign_summary_text())
+
+
+func _build_campaign_summary_text() -> String:
+	var minutes: int = int(elapsed_play_sec) / 60
+	var seconds: int = int(elapsed_play_sec) % 60
+	return "Campaign: %s (%s)\nPlay time: %d:%02d\nMoney earned: $%d\nFinal balance: $%d\nRoster recruited: %d/%d + MC\nEnemies eliminated: %d" % [
+		current_campaign.menu_name, current_campaign.main_character_name,
+		minutes, seconds, economy.lifetime_money_earned, economy.money,
+		economy.recruited_count, economy.max_roster, enemies_eliminated_count,
+	]
 
 
 func _on_restart() -> void:
@@ -1046,6 +1414,9 @@ func _gather_save_data() -> Dictionary:
 		"factory_cargo": factory.stored_cargo,
 		"heat_waves_dispatched": heat_manager.waves_dispatched,
 		"parts": economy.parts,
+		"elapsed_play_sec": elapsed_play_sec,
+		"enemies_eliminated_count": enemies_eliminated_count,
+		"lifetime_money_earned": economy.lifetime_money_earned,
 	}
 
 
@@ -1066,14 +1437,32 @@ func _serialize_unit(u: BwUnit) -> Dictionary:
 	}
 
 
-func _on_save() -> void:
-	SaveService.save_game(1, _gather_save_data())
+func _on_save_load_requested() -> void:
+	_save_slot_panel.refresh()
+	_save_slot_panel.visible = not _save_slot_panel.visible
+	if _save_slot_panel.visible:
+		_settings_panel.visible = false
 
 
-func _on_load() -> void:
+func _on_settings_requested() -> void:
+	_settings_panel.visible = not _settings_panel.visible
+	if _settings_panel.visible:
+		_save_slot_panel.visible = false
+
+
+func _on_save_to_slot(slot: int) -> void:
+	SaveService.save_game(slot, _gather_save_data())
+	_save_slot_panel.refresh()
+
+
+func _on_load_slot(slot: int) -> void:
 	get_tree().paused = false
-	GameState.pending_load_slot = 1
+	GameState.pending_load_slot = slot
 	get_tree().reload_current_scene()
+
+
+func _run_autosave() -> void:
+	SaveService.save_game(SaveService.AUTOSAVE_SLOT, _gather_save_data())
 
 
 func _apply_save_data(data: Dictionary) -> void:
@@ -1082,8 +1471,14 @@ func _apply_save_data(data: Dictionary) -> void:
 	if data.has("difficulty_id"):
 		GameState.current_difficulty_id = StringName(String(data["difficulty_id"]))
 	economy.set_money(int(data.get("money", 4000)))
+	# set_money()'s own lifetime_money_earned bump treats any increase
+	# as "earned"; override with the save's own true lifetime total so
+	# loading a save doesn't inflate the campaign-summary stat.
+	economy.lifetime_money_earned = int(data.get("lifetime_money_earned", 0))
 	economy.recruited_count = int(data.get("recruited_count", 0))
 	economy.parts = int(data.get("parts", 0))
+	elapsed_play_sec = float(data.get("elapsed_play_sec", 0.0))
+	enemies_eliminated_count = int(data.get("enemies_eliminated_count", 0))
 	var saved_inventory = data.get("gun_shop_inventory", null)
 	if saved_inventory is Dictionary:
 		for k in saved_inventory.keys():
@@ -1132,7 +1527,7 @@ func _apply_save_data(data: Dictionary) -> void:
 		else:
 			u.auto_defend = true
 			enemies_root.add_child(u)
-			u.died.connect(_on_enemy_died.bind(u))
+			u.died.connect(_on_enemy_died) # died(unit) already supplies u; see selection_manager.gd fix note
 		var saved_state: int = int(ud.get("state", BwUnit.State.IDLE))
 		var saved_hp: float = float(ud.get("hp", u.max_hp))
 		var loaded_mc_level: int = int(ud.get("mc_level", 1))
@@ -1162,3 +1557,19 @@ func _apply_save_data(data: Dictionary) -> void:
 
 func gather_save_data_for_test() -> Dictionary:
 	return _gather_save_data()
+
+
+## ---------------------------------------------------------------
+## MVP6 victory/defeat test-only hooks (mirrors gather_save_data_for_test's
+## existing precedent for a narrow, clearly-named test seam).
+## ---------------------------------------------------------------
+func register_enemy_mc_for_test(mc: BwUnit) -> void:
+	_enemy_mc_registry.append(mc)
+
+
+func force_check_victory_for_test() -> void:
+	_check_victory_condition()
+
+
+func is_mission_over_for_test() -> bool:
+	return _mission_over

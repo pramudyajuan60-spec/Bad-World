@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/open_world_map.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/gameplay/box_select_overlay.gd" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/gameplay/command_controller.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/gameplay/selection_hud.gd" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/gameplay/PauseMenu.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/gameplay/VictoryDefeatScreen.tscn" id="9"]
 [ext_resource type="Script" path="res://scripts/economy/campaign_economy.gd" id="8"]
 
 [node name="OpenWorldMap" type="Node2D"]
@@ -91,3 +92,5 @@ layout_mode = 2
 text = ""
 
 [node name="PauseMenu" parent="." instance=ExtResource("7")]
+
+[node name="VictoryDefeatScreen" parent="." instance=ExtResource("9")]
