@@ -563,7 +563,82 @@ Known simplifications, deferred:
   Nabil. Documented here since it was only discovered while building
   that panel.
 
-## Next up: MVP 7 (not started)
+## MVP 7 delivered scope
 
-Not yet read in full; will be read before work begins per base rule 12
-(stop and report after each MVP rather than proceeding automatically).
+Per `Part 9.txt` ("Kerjakan MVP 7: Release Candidate Validation. Jangan
+menambahkan fitur besar baru. Fokus pada perbaikan."). Full breakdown
+(done/verified vs. placeholder vs. not-done vs. known bugs vs.
+technical risks) lives in **`docs/RELEASE_CANDIDATE_REPORT.md`** — this
+section is a short pointer, not a duplicate.
+
+- **Placeholder audit** (item 1-2): every existing Register row sorted
+  into "safe for MVP" (cosmetic-only, ~20 rows) vs. "must replace
+  before a real release" (functional gaps: rival-faction HQs/AI,
+  missing rogue/surrender/flee behavior, Nabil's own Factory/Dealer
+  loop despite "tidak menjual cargo") — see
+  `docs/PLACEHOLDER_REGISTER.md`.
+- **Automated/integration/headless-AI tests** (items 3-5): all 28
+  suites pass (4 new this MVP); `AiMatchArena` + a new
+  `tools/run_balance_report.gd` cover the headless-simulation
+  requirement.
+- **All 4 campaigns × 3 difficulties** (item 6): exercised by the new
+  balance report (12 faction/difficulty cells, 3 trials each).
+- **Every victory/defeat condition** (item 7): **real fix** — VICTORY
+  was previously only reachable via a test-only fake registry; this
+  MVP adds `_spawn_rival_factions()` so the other 3 campaigns' real
+  Main Characters (their own stats) spawn in the open world and are
+  checked for real, including a real fix to Nabil's "no active cartel
+  factory" condition (was checking the player's own factory instead of
+  the rival cartels'). DEFEAT was already real since MVP6.
+- **Unit cap, payroll, factory/dealer/bank loop, vehicle/turret,
+  save/load+migration, special-unit balance** (items 8, 9, 11, 12, 15,
+  17): already covered by MVP2-6's own suites, re-run clean this pass.
+- **Out-of-ammo behavior, safe-zone exploit** (items 10, 13): **a real
+  bug found and fixed** — a unit standing inside a safe zone could
+  fire/execute/recruit/throw-grenades outward with zero counterplay
+  (only the target's safe-zone status was ever checked before,
+  contradicting Prompt Dasar's explicit "senjata diturunkan" rule).
+  Fixed at all 4 call sites; new `tests/test_mvp7_release_validation.gd`.
+- **Main Character death** (item 14): already real since MVP6 (DEFEAT),
+  now joined by a real, playable VICTORY path.
+- **AI ambush frequency** (item 16): measured directly (2.00/1.67/1.67
+  committed ambushes per match, Easy→Hard) in the new balance report,
+  with a qualitative explanation for the Easy > Hard direction.
+- **Memory leak / orphan node / navigation spike / frame drop, pooling/
+  culling, 60 FPS target** (items 18-21): new
+  `tests/test_mvp7_release_validation.gd` (50 spawn/death cycles, 0
+  orphan nodes) and a new `tools/profile_near_cap_multi_faction.gd`
+  (4 factions, 40 units, live combat, real wall-clock timing — not
+  `--fixed-fps`): 16.56-16.60ms average frame time (60.2-60.4 FPS
+  budget), 0 orphan nodes after the stress run. Pooling/culling
+  assessed and **not implemented** — the 60 FPS target is already met
+  at this project's own stated unit-count ceiling without them; see
+  `docs/BALANCE.md` "MVP7 performance report".
+- **Windows export preset + build + run the export, not just the
+  editor** (items 22-24): `export_presets.cfg` committed (Windows
+  Desktop + a Linux Verification Build preset); both built
+  successfully. The Windows `.exe` is structurally valid but could not
+  be *executed* in this sandbox — Wine fails to run any Windows binary
+  at all under this sandbox's gVisor kernel (confirmed with a minimal,
+  project-unrelated `wine cmd.exe` test; reported as a platform issue).
+  The Linux build was run headful under Xvfb and screenshot-confirmed
+  rendering real gameplay UI, as the closest feasible substitute. See
+  `docs/TECH_DECISIONS.md` and `docs/RELEASE_CANDIDATE_REPORT.md`.
+- **Docs** (item 25): README, this file, TECH_DECISIONS, TEST_PLAN,
+  BALANCE, PLACEHOLDER_REGISTER all updated; new
+  `docs/RELEASE_CANDIDATE_REPORT.md` is the authoritative final report
+  Prompt Dasar's closing MVP7 instructions ask for.
+
+Explicitly **not done** this pass (by design — "jangan menambahkan
+fitur besar baru"): rogue/surrender/flee behavior when an enemy MC
+dies (Prompt Dasar base rules; a genuine missing feature, not
+previously flagged anywhere — would be a new per-unit behavior system,
+out of MVP7's own stated scope); Nabil's own Factory/Dealer loop
+removal (pre-existing MVP3/4 deviation, documented, not touched);
+root-causing why Campaign Fauzi's AI never buys a vehicle in the
+balance report (observed, not yet investigated).
+
+**This project is not production-ready** — see
+`docs/RELEASE_CANDIDATE_REPORT.md` for the full, explicit breakdown
+the user asked this report to provide rather than a blanket "done"
+claim.

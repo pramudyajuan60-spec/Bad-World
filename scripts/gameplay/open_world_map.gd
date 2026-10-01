@@ -134,11 +134,18 @@ var enemies_eliminated_count: int = 0
 var _victory_defeat_screen: Node = null
 var _mission_over: bool = false
 ## Populated only if/when a rival faction Main Character is ever
-## spawned in this live map (not yet — see docs/PLACEHOLDER_REGISTER.md
-## "Rival faction HQs"); kept generic and tested in isolation
-## (tests/test_mvp6_victory_defeat.gd) so the victory condition is
-## correct and ready the moment that content lands.
+## spawned in this live map. As of MVP7, `_spawn_rival_factions()`
+## populates this for real with the other 3 campaigns' Main
+## Characters (see docs/PLACEHOLDER_REGISTER.md "Rival faction HQs"
+## for exactly what is and isn't real about them).
 var _enemy_mc_registry: Array = []
+## MVP7: destructible Factory per rival CARTEL HQ, built only for
+## Campaign Nabil (the only faction whose VICTORY rule needs "no
+## active cartel factory" — Prompt Dasar "Nabil menang jika ...
+## Tidak ada pabrik cartel aktif"). Distinct from `factory` (the
+## player's own, which for every OTHER campaign is what that
+## acceptance item is actually testing).
+var _rival_cartel_factories: Array = []
 ## MVP5: dev-only fog-of-war feed for this map's fixed hostile
 ## encounters (the "Hostile (PLACEHOLDER)" test squad + DEA response
 ## waves), exposed only through the F3 debug overlay. These squads are
@@ -870,6 +877,80 @@ func _spawn_fresh() -> void:
 		enemies_root.add_child(e)
 		e.died.connect(_on_enemy_died) # died(unit) already supplies e; see selection_manager.gd fix note
 
+	_spawn_rival_factions()
+
+
+## MVP7: wires a real (if intentionally stationary) rival faction at
+## each of the other 3 HQ regions, so VICTORY is actually reachable by
+## playing (previously only reachable via a test-only fake registry —
+## see docs/PLACEHOLDER_REGISTER.md "Rival faction HQs"). Each rival's
+## Main Character uses that faction's real `mc_unit` stats/combat
+## (same `BwUnit`/weapon-data systems as every other unit), but stays
+## `can_move = false` + `auto_defend = true` — the same "fixed hostile
+## encounter" design already used for the starting dummy squad and DEA
+## response waves (see docs/TECH_DECISIONS.md "MVP5 live-game AI
+## scope"), not the full mobile STRATEGIC/TACTICAL AI (which remains
+## proven in the headless `AiMatchArena` instead). A small 2-unit guard
+## squad accompanies each rival MC. For Campaign Nabil specifically,
+## each rival CARTEL HQ (not DEA, which has no Factory/Dealer loop at
+## all) additionally gets a destructible Factory, since Nabil's own
+## VICTORY rule requires every cartel factory destroyed too.
+func _spawn_rival_factions() -> void:
+	_rival_cartel_factories.clear()
+	for rival_id in REGION_BY_CAMPAIGN.keys():
+		if rival_id == current_campaign.id:
+			continue
+		var rival_campaign: CampaignData = CampaignDatabase.get_campaign(rival_id)
+		if rival_campaign == null:
+			continue
+		var rival_faction: FactionData = rival_campaign.faction
+		var region: Vector2 = REGION_BY_CAMPAIGN[rival_id]
+		var side := StringName("enemy_%s" % String(rival_id))
+
+		var mc := _make_unit(rival_id, "%s (PLACEHOLDER rival MC)" % rival_campaign.main_character_name, "MC", side, false)
+		mc.unit_data = rival_campaign.mc_unit # override _make_unit's current_campaign.mc_unit default
+		mc.position = region + Vector2(-80, 40)
+		mc.auto_defend = true
+		mc.equip_weapon("primary", economy.weapon_catalog["weapon_pistol"])
+		mc.primary_reserve = 999
+		enemies_root.add_child(mc)
+		mc.died.connect(_on_enemy_died)
+		register_enemy_mc(mc)
+
+		var guard_tier: String = "B1" if rival_faction.has_b1 else "B2"
+		var guard_positions: Array = FormationUtils.compute_positions(region + Vector2(60, 40), 2, 40.0)
+		for i in range(2):
+			var g := _make_unit(StringName("%s_rival_guard_%d" % [String(rival_id), i + 1]), "%s Guard (PLACEHOLDER)" % rival_faction.display_name, guard_tier, side, false)
+			g.auto_defend = true
+			g.is_recruitable_tier = true
+			g.equip_weapon("primary", economy.weapon_catalog["weapon_assault_rifle"])
+			g.primary_reserve = 999
+			g.position = guard_positions[i]
+			enemies_root.add_child(g)
+			g.died.connect(_on_enemy_died)
+
+		if current_faction.uses_armory_instead_of_gun_shop and rival_faction.has_b1:
+			_rival_cartel_factories.append(_build_rival_factory(rival_id, rival_faction, region, side))
+
+
+func _build_rival_factory(rival_id: StringName, rival_faction: FactionData, region: Vector2, side: StringName) -> Area2D:
+	var rf := Area2D.new()
+	rf.set_script(FACTORY_SCRIPT)
+	rf.level = rival_faction.starting_factory_level if rival_faction.starting_factory_level > 0 else 1
+	rf.faction_side = side
+	rf.value_mult = rival_faction.factory_value_mult
+	rf.speed_mult = rival_faction.factory_speed_mult
+	rf.position = region + Vector2(300, 200)
+	rf.set_meta("rival_campaign_id", String(rival_id)) # save/load key, see _gather_save_data
+	_attach_circle_shape(rf, 80.0)
+	_attach_label(rf, "%s Factory (PLACEHOLDER)" % rival_faction.display_name)
+	buildings_root.add_child(rf)
+	return rf
+
+
+func register_enemy_mc(mc: BwUnit) -> void:
+	_enemy_mc_registry.append(mc)
+
 
 func _make_unit(id: StringName, name_: String, tier: String, side: StringName, movable: bool) -> BwUnit:
 	var u: BwUnit = UNIT_SCENE.instantiate()
@@ -1335,13 +1416,10 @@ func _on_player_mc_died(_unit = null) -> void:
 
 ## Generic rule match (Prompt Dasar "VICTORY DAN DEFEAT"): cartels win
 ## when every enemy Main Character is eliminated; Nabil additionally
-## requires no active cartel factory left standing. `_enemy_mc_registry`
-## is never populated by this live map yet (rival faction HQs are
-## still non-functional placeholders — see
-## docs/PLACEHOLDER_REGISTER.md), so this structurally cannot fire
-## here today; it is implemented and covered by
-## tests/test_mvp6_victory_defeat.gd against a fake registry so the
-## condition is correct and ready the moment rival MCs go live.
+## requires no active cartel factory left standing — checked against
+## `_rival_cartel_factories` (the *rival* cartels' factories), never
+## the player's own `factory` node (a real MVP6 bug this MVP7 pass
+## fixed; see docs/TECH_DECISIONS.md).
 func _check_victory_condition() -> void:
 	if _mission_over or _enemy_mc_registry.is_empty():
 		return
@@ -1353,8 +1431,9 @@ func _check_victory_condition() -> void:
 	if not all_enemy_mc_dead:
 		return
 	if current_faction.uses_armory_instead_of_gun_shop:
-		if is_instance_valid(factory) and not factory.is_destroyed:
-			return # Nabil additionally needs every cartel factory shut down
+		for rf in _rival_cartel_factories:
+			if is_instance_valid(rf) and not rf.is_destroyed:
+				return # Nabil additionally needs every cartel factory shut down
 	_mission_over = true
 	victory_defeat_screen.show_result(true, "All rival Main Characters have been eliminated.", _build_campaign_summary_text())
 
@@ -1401,11 +1480,19 @@ func _gather_save_data() -> Dictionary:
 				"x": v.global_position.x, "y": v.global_position.y,
 				"hp": v.hp, "carried_cargo": v.carried_cargo, "carried_cash": v.carried_cash,
 			})
+	var rival_factories_data: Array = []
+	for rf in _rival_cartel_factories:
+		if is_instance_valid(rf):
+			rival_factories_data.append({
+				"rival_campaign_id": rf.get_meta("rival_campaign_id") if rf.has_meta("rival_campaign_id") else "",
+				"level": rf.level, "hp": rf.hp, "stored_cargo": rf.stored_cargo,
+			})
 	return {
 		"campaign_id": String(GameState.current_campaign_id),
 		"difficulty_id": String(GameState.current_difficulty_id),
 		"units": units_data,
 		"vehicles": vehicles_data,
+		"rival_factories": rival_factories_data,
 		"money": economy.money,
 		"recruited_count": economy.recruited_count,
 		"gun_shop_inventory": economy.gun_shop_inventory,
@@ -1506,6 +1593,18 @@ func _apply_save_data(data: Dictionary) -> void:
 			u.unit_data = current_campaign.special_units[loaded_special_index]
 			special_unit_instances.append(u)
 			_recruited_special_ids.append(loaded_special_index)
+		# MVP7: a rival faction's Main Character must use *that rival's*
+		# mc_unit stats, not current_campaign's (_make_unit's generic
+		# "MC" branch always assigns current_campaign.mc_unit, which is
+		# only correct for the player's own MC) — see
+		# _spawn_rival_factions(). This unit's own saved "id" is the
+		# rival campaign's StringName id (set at spawn time), so it
+		# doubles as the lookup key here.
+		if tier == "MC" and side != &"player":
+			var rival_campaign_for_mc: CampaignData = CampaignDatabase.get_campaign(StringName(String(ud.get("id", ""))))
+			if rival_campaign_for_mc != null:
+				u.unit_data = rival_campaign_for_mc.mc_unit
+			register_enemy_mc(u)
 		var primary_id: String = ud.get("primary_weapon", "")
 		if primary_id != "" and economy.weapon_catalog.has(primary_id):
 			u.equip_weapon("primary", economy.weapon_catalog[primary_id])
@@ -1554,6 +1653,31 @@ func _apply_save_data(data: Dictionary) -> void:
 		v.carried_cargo = int(vd.get("carried_cargo", 0))
 		v.carried_cash = int(vd.get("carried_cash", 0))
 
+	# MVP7: rebuild rival cartel factories (Nabil victory condition
+	# only) from saved state, since _spawn_rival_factions() is only
+	# ever called from _spawn_fresh(), never from this loaded-save
+	# path — mirrors the rival-MC reconstruction above.
+	var saved_rival_factories: Dictionary = {}
+	for rfd in data.get("rival_factories", []):
+		saved_rival_factories[String(rfd.get("rival_campaign_id", ""))] = rfd
+	if current_faction.uses_armory_instead_of_gun_shop:
+		for rival_id in REGION_BY_CAMPAIGN.keys():
+			if rival_id == current_campaign.id:
+				continue
+			var rival_campaign: CampaignData = CampaignDatabase.get_campaign(rival_id)
+			if rival_campaign == null or not rival_campaign.faction.has_b1:
+				continue
+			var rival_faction: FactionData = rival_campaign.faction
+			var side := StringName("enemy_%s" % String(rival_id))
+			var rf := _build_rival_factory(rival_id, rival_faction, REGION_BY_CAMPAIGN[rival_id], side)
+			var saved_rf = saved_rival_factories.get(String(rival_id))
+			if saved_rf != null:
+				rf.level = int(saved_rf.get("level", rf.level))
+				rf.stored_cargo = int(saved_rf.get("stored_cargo", 0))
+				rf.hp = float(saved_rf.get("hp", rf.max_hp))
+				rf.is_destroyed = rf.hp <= 0.0
+			_rival_cartel_factories.append(rf)
+
 
 func gather_save_data_for_test() -> Dictionary:
 	return _gather_save_data()
@@ -1564,7 +1688,19 @@ func gather_save_data_for_test() -> Dictionary:
 ## existing precedent for a narrow, clearly-named test seam).
 ## ---------------------------------------------------------------
 func register_enemy_mc_for_test(mc: BwUnit) -> void:
-	_enemy_mc_registry.append(mc)
+	register_enemy_mc(mc)
+
+
+## Test-only: isolates a victory-condition-logic test from the real
+## rival MCs/factories _spawn_rival_factions() now always creates (see
+## MVP7 docs/PLACEHOLDER_REGISTER.md "Rival faction HQs"), so a test
+## can assert on a small controlled registry instead of 3+ real ones.
+func clear_enemy_mc_registry_for_test() -> void:
+	_enemy_mc_registry.clear()
+
+
+func rival_cartel_factories_for_test() -> Array:
+	return _rival_cartel_factories
 
 
 func force_check_victory_for_test() -> void:

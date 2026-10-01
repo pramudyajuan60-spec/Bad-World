@@ -464,3 +464,114 @@ bug, not something introduced by MVP6. Found by
 assert on the resulting state). Fixed at all three sites by dropping
 the redundant `.bind(...)` — the signal's own argument already is the
 unit every one of these handlers needed.
+
+### MVP7: real rival factions now spawn in the live open world (fixes "VICTORY unreachable")
+
+MVP6 documented that `_enemy_mc_registry` was never populated by the
+live game, so VICTORY (unlike DEFEAT) could only be exercised via a
+test-only fake registry. MVP7 adds `open_world_map.gd::_spawn_rival_factions()`,
+called from `_spawn_fresh()`: the other 3 campaigns' real Main
+Characters (their own `mc_unit` stats, not the player's) plus a
+2-unit guard squad each, at their respective HQ region. Deliberately
+**stationary** (`can_move = false`, `auto_defend = true`) — the same
+"fixed hostile encounter" design already established for the starting
+dummy squad and DEA response waves (see "MVP5 live-game AI scope"
+above), not full mobile STRATEGIC/TACTICAL AI, which remains proven
+separately in `AiMatchArena`. Save/load reconstructs them generically
+through the existing non-player-unit deserialization path, with one
+addition: a rival MC's own campaign-specific `mc_unit` must be
+re-applied on load (the generic `_make_unit()` "MC" branch otherwise
+defaults to `current_campaign.mc_unit`, which is only correct for the
+player's own MC).
+
+### Fixed: Nabil's VICTORY factory-check looked at the wrong factory
+
+`_check_victory_condition()`'s Nabil branch (Prompt Dasar: "Tidak ada
+pabrik cartel aktif") checked `factory.is_destroyed` — but `factory`
+is the **player's own** factory node (always built in
+`_build_buildings()`, including for Nabil, who starts at
+`starting_factory_level = 0`). The rule is actually about the *rival
+cartels'* factories, which didn't exist in the live game at all before
+this MVP7 pass. Fixed alongside `_spawn_rival_factions()`, which
+builds a destructible Factory per rival cartel HQ (skipping DEA, which
+has no Factory/Dealer loop) into a new `_rival_cartel_factories`
+array, and updated the victory check to look at that array instead.
+
+### Fixed: safe-zone "weapons lowered" only protected the target, never the attacker
+
+Prompt Dasar's "BANK DAN SAFE ZONE" section is explicit: *"Di dalam
+safe zone: Tidak ada attack ... Senjata diturunkan"* (no attack,
+weapons lowered) for whoever is standing inside it — and closes with
+*"Musuh tidak boleh menunggu tepat di batas safe zone dan menembak
+tanpa counterplay"* (an enemy must not be able to sit at the safe-zone
+boundary and shoot with no counterplay). The existing implementation
+only ever checked the **target's** position (`take_damage()` blocks
+damage to a unit standing in a safe zone) — a unit standing *inside*
+the zone could still fire outward at an unprotected target indefinitely,
+exactly the forbidden exploit. Fixed in `unit.gd` by adding the
+attacker/caster's own `economy.is_position_safe(global_position)`
+check at every lethal/capture action: `_try_fire_stationary` (the
+actual damage-dealing act), `order_use_grenade`, `order_execute`, and
+`order_recruit_downed`. Covered by
+`tests/test_mvp7_release_validation.gd`.
+
+### MVP7 balance-report income metric: gross earned, not net balance delta
+
+An early version of `tools/run_balance_report.gd` computed "income per
+minute" as `(final money - starting money) / minutes` — this is a net
+cash-flow delta, not income, and read as *negative* for every single
+faction/difficulty in the first captured run purely because AI
+spending (recruitment, ammo, vehicles, factory upgrades) outpaced
+sales within a ~100s match. Fixed to use the existing
+`CampaignEconomy.lifetime_money_earned` field (MVP6, tracks gross
+earnings via `set_money()`'s increase-only accounting) instead. This
+surfaced the same "starting money counts as earned" bug `open_world_map.gd`
+had already been fixed for in MVP6 — `AiMatchArena._build_faction()`
+also calls `economy.set_money(campaign.starting_money)` and needed the
+identical one-line `lifetime_money_earned = 0` reset.
+
+### MVP7: Wine cannot run any Windows binary under this sandbox's gVisor kernel
+
+The Windows export itself succeeds cleanly (valid PE32+ x86-64
+executable, official 4.3-stable export templates, embedded `.pck`).
+Installing `wine64` via `apt` also succeeds. But *every* invocation —
+including `wineboot --init` and a minimal `wine cmd.exe /c echo hello`
+with no relation to this project's build — fails identically and
+immediately, before any prefix-specific or game-specific code ever
+runs:
+```
+err:seh:segv_handler Got unexpected trap 0   (repeated ~20-30x)
+err:virtual:virtual_setup_exception stack overflow 1664 bytes ...
+```
+`uname -a` confirms a `gvisor`-suffixed kernel. This is a known class
+of Wine/gVisor incompatibility: Wine's own NT-emulation bootstrap
+relies on raw SIGSEGV-based exception trampolines and
+`sigaltstack`/hardware-fault semantics that gVisor's user-space
+syscall emulation does not reproduce faithfully — a sandbox platform
+limitation, not something fixable via export settings, `ulimit`, or a
+fresh `WINEPREFIX` (all tried). Reported via `report_platform_issue`.
+Workaround: the Windows `.exe` was verified structurally (`file`
+confirms valid PE32+ x86-64) but not executed; the equivalent Linux
+x86_64 export was built and *actually run* headful under Xvfb instead
+(screenshot-verified rendering the real Content Warning screen), as
+the closest feasible "run the exported build, not just the editor"
+substitute available in this environment. See
+docs/RELEASE_CANDIDATE_REPORT.md.
+
+### Confirmed pre-existing test flakiness (not introduced by MVP6/MVP7)
+
+Several suites intermittently fail on an unrelated RNG/timing roll and
+pass consistently on rerun with zero code changes to the files they
+exercise — confirmed by reproducing on the pre-MVP7 commit before any
+of this MVP's edits:
+- `tests/test_mvp5_tactical_ai.gd`, `tests/test_mvp5_diplomacy.gd`,
+  `tests/test_mvp5_arena.gd` — already noted in MVP6's own report.
+- `tests/test_mvp3_vehicle.gd`'s moving-vs-stationary turret accuracy
+  comparison — same root cause (an unseeded `randf()` accuracy roll
+  can occasionally produce a moving-turret sample that, by chance,
+  outscores a stationary one over a short window). Reproduced on
+  `vehicle.gd` completely unmodified by this MVP7 pass.
+These are accepted as known, harmless flakiness (not re-seeded or
+otherwise hardened in this pass, to keep MVP7's own change scope to
+what it actually needed) rather than silently ignored — see
+docs/RELEASE_CANDIDATE_REPORT.md "Known bugs/technical risks".

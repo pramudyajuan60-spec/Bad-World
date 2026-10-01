@@ -7,7 +7,25 @@ incrementally through a sequence of MVPs defined in
 `Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
 `Part 9.txt` (MVP 7, release candidate).
 
-**Current status: MVP 6 — Campaign Presentation and User Experience.**
+**Current status: MVP 7 — Release Candidate Validation (not
+production-ready — see docs/RELEASE_CANDIDATE_REPORT.md for the full
+breakdown of what's verified, what's still placeholder, and what's not
+yet done).**
+VICTORY is now reachable by playing, not just testable in isolation:
+real rival-faction Main Characters (their own faction's combat stats)
+spawn at the other 3 HQs and are checked by the win condition,
+including Nabil's extra "no active cartel factory" requirement against
+real, destructible rival factories. This pass also found and fixed two
+real pre-existing bugs (Nabil's victory check was looking at the wrong
+factory; a unit standing inside a safe zone could attack/execute/
+recruit/throw-grenades outward with zero counterplay), added a
+release-candidate balance report (match duration, win rate, income/
+min, army size, ambush/DEA frequency, MC survival, Easy/Medium/Hard
+differences — see docs/BALANCE.md), confirmed 60 FPS with all 4
+factions active and units near the roster cap, and produced Windows +
+Linux export builds (the Linux one verified actually running
+headful; Windows could not be executed in this sandbox due to a
+Wine/gVisor incompatibility — see docs/RELEASE_CANDIDATE_REPORT.md).
 A content warning now opens the app, followed by a Main Menu →
 Campaign Select (full cards: portrait, faction, strengths/weaknesses,
 starting units, economy rating, unit cap) → Difficulty → Story → the
@@ -121,6 +139,9 @@ output.
 - `docs/IMPLEMENTATION_PLAN.md` — the 8-MVP roadmap and current status.
 - `docs/PLACEHOLDER_REGISTER.md` — placeholder policy and known gaps.
 - `docs/TEST_PLAN.md` — how MVP 0 (and later MVPs) are verified.
+- `docs/RELEASE_CANDIDATE_REPORT.md` — MVP7 release-candidate
+  validation: what's done+verified, placeholder, not yet done, known
+  bugs, technical risks, and how to run from source / build Windows.
 
 ## Repository layout
 
