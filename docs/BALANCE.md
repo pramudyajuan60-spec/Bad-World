@@ -280,3 +280,80 @@ Measured results at time of writing: Zie's Triad Synergy trio beats
 ~60-80% of 10 trials. Both are comfortably inside "wins sometimes,
 loses sometimes" — the qualitative claim under test, since Prompt
 Dasar names no exact percentage for either matchup.
+
+## MVP5 difficulty scaling
+
+Prompt Dasar: "Difficulty meningkatkan kualitas keputusan, bukan
+memberi uang/vision ilegal." `DifficultyData` (`scripts/data/
+difficulty_data.gd`) adds 4 knobs on top of MVP0's existing
+`reaction_delay_sec`/`decision_interval_sec`, every one of which only
+changes *when/how well* the AI decides, never a resource:
+
+| Knob | Easy | Medium | Hard | What it changes |
+|---|---|---|---|---|
+| `decision_quality` | 0.3 | 0.6 | 0.9 | Probability the AI picks the objectively-best scored target/action this tick instead of a random acceptable one (target priority, neutral-encounter choice). |
+| `utility_threshold_mult` | 1.4 | 1.0 | 0.75 | Multiplies every utility-gated action's commit threshold (raid, attack-MC, ambush-arm). Lower = more decisive about marginal opportunities. |
+| `retreat_hp_threshold` | 0.2 | 0.3 | 0.4 | HP ratio below which a unit proactively disengages instead of fighting on. Higher = retreats earlier/smarter. |
+| `ambush_intel_patience_sec` | 12.0 | 25.0 | 40.0 | How long an armed ambush waits for its target before auto-cancelling as stale. |
+
+None of these touch `starting_money`, `vision_range_px`, unit count, or
+damage/accuracy — confirmed not just by inspection but by the
+same-faction cross-difficulty comparison below, which holds the
+faction identical on both sides and only varies difficulty.
+
+## MVP5 initial AI win-rate report
+
+Acceptance criterion: "Laporkan hasil win-rate awal per
+faction/difficulty." Produced by `tools/run_ai_winrate_report.gd`
+(`godot4 --headless --fixed-fps 600 --path . --script
+res://tools/run_ai_winrate_report.gd`; `--fixed-fps` is required or the
+report takes ~40-50x longer in real wall-clock time — see
+docs/TECH_DECISIONS.md "Headless AI simulation speed"). 3 trials per
+configuration; each of the 4 campaigns plays Campaign Juan as a fixed
+reference opponent at matching difficulty (Juan itself plays Atha).
+Captured output at time of writing (seed 20260928):
+
+```
+Faction            Difficulty     Wins   Losses  Timeout   Win rate
+Campaign Juan      Easy              3        0        0       100%
+Campaign Juan      Medium            2        1        0        67%
+Campaign Juan      Hard              2        1        0        67%
+Campaign Atha      Easy              1        2        0        33%
+Campaign Atha      Medium            1        2        0        33%
+Campaign Atha      Hard              0        2        1         0%
+Campaign Fauzi     Easy              0        3        0         0%
+Campaign Fauzi     Medium            0        3        0         0%
+Campaign Fauzi     Hard              1        2        0        33%
+Campaign Nabil     Easy              1        1        1        50%
+Campaign Nabil     Medium            2        1        0        67%
+Campaign Nabil     Hard              1        2        0        33%
+```
+
+Interpretation: with only 3 trials/config this is explicitly an
+*initial* report (as the acceptance criterion asks for), not a tuned
+balance claim — the per-faction/per-difficulty spread above is well
+within what 3-trial sampling noise alone can produce, especially since
+every match is also won or lost by the same single-event signal (enemy
+MC death) used throughout this MVP. It is not evidence of a faction
+being structurally stronger or weaker; a real balance-tuning pass
+(Monte-Carlo-style, dozens of trials per cell, matching MVP4's balance
+simulation rigor) is deferred to whichever later MVP first needs
+faction-vs-faction balance guarantees, since Prompt Dasar does not ask
+for one here.
+
+What this report *does* support directly, because it isolates one
+variable at a time: the same-faction, cross-difficulty check (both
+sides play Campaign Juan, only difficulty differs) ran immediately
+after the table above and produced:
+
+```
+Matchup                    Higher    Lower  Timeout
+Hard vs Medium                  3        0        0
+Medium vs Easy                  3        0        0
+```
+
+Hard beat Medium 3/3 and Medium beat Easy 3/3 — direct, controlled
+evidence for the acceptance criterion "Hard lebih cerdas dari Medium,
+bukan curang": with faction/starting-resources/vision held perfectly
+constant, the only variable left is `DifficultyData`'s decision-quality
+knobs, and the higher-skill side won every trial.

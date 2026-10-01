@@ -12,7 +12,7 @@ next begins (base rule 12).
 | 2 | Combat and Unit Management | **Done** — see "MVP 2 delivered scope" below. |
 | 3 | Open-World Economy and Vehicle Loop | **Done** — see "MVP 3 delivered scope" below. |
 | 4 | Four Asymmetric Campaigns | **Done** — see "MVP 4 delivered scope" below. |
-| 5 | Intelligent AI and Diplomacy | Not started |
+| 5 | Intelligent AI and Diplomacy | **Done** — see "MVP 5 delivered scope" below. |
 | 6 | Campaign Presentation and User Experience | Not started |
 | 7 | Release Candidate Validation | Not started |
 
@@ -316,9 +316,134 @@ Known simplifications, deferred to their stated MVP:
 - Ability bar/recruitment/armory panels are still plain generic
   Controls (MVP6 UI polish), not final themed art.
 
-## Next up: MVP 5 (not started)
+## MVP 5 delivered scope
 
-Per `Part 7.txt`: Intelligent AI and Diplomacy — layered tactical AI
-(formation, target priority, cover, flank, retreat, revive, vehicle
-use, protect-MC) and strategic AI on top. Substantially larger than
-MVP 4; treat as its own effort.
+Per `Part 7.txt` ("Lanjutkan dari MVP 4. Kerjakan MVP 5: Intelligent AI
+dan Diplomacy"):
+
+- **TACTICAL layer** (`scripts/ai/unit_tactical_ai.gd`, one instance
+  per AI-controlled `BwUnit`): decides target priority (prefers the
+  enemy MC, then lower-HP targets, weighted by distance), flanks
+  instead of walking straight at a target outside weapon range,
+  proactively disengages below a difficulty-scaled HP threshold
+  (separate from and in addition to MVP2's existing suppression-forced
+  retreat), revives a downed ally once the area is clear of known
+  threats, protects the Main Character by retargeting onto whatever
+  threatens it, and dodges incoming grenades via a new global
+  `BattlefieldEvents.grenade_incoming` signal. Move/formation, cover,
+  reload, suppression, and vehicle entry/exit are MVP1/2/3's existing,
+  already-tested `BwUnit`/`Vehicle` mechanics — this layer decides
+  *when* to invoke them, not how they work.
+- **STRATEGIC layer** (`scripts/ai/faction_strategic_ai.gd`, one
+  instance per AI faction): runs recruitment (with a payroll cushion),
+  buys ammo/resupplies weapons when a unit's mag+reserve drops below
+  30% of full, upgrades the factory once affordable with a safety
+  reserve, dedicates runners to cargo pickup → best-demand dealer →
+  Bank deposit, buys/repairs vehicles, holds idle units near the HQ
+  under threat, sends scouts out when it has zero intel at all (a real
+  bug this MVP's own required simulation caught — see "balance
+  simulation" notes below), and makes utility-gated raid and
+  attack-the-enemy-MC decisions (force-ratio-based, scaled by
+  difficulty's `utility_threshold_mult`) or explicitly waits when the
+  utility is too low.
+- **INFORMATION layer** (`scripts/ai/faction_knowledge.gd`,
+  `FactionKnowledge`): real fog-of-war per AI faction — an enemy is
+  only "known" if currently within some own unit's `vision_range_px`
+  AND passes a line-of-sight raycast; last-known-position persists
+  after losing sight and ages into "stale" after 20s, fully forgotten
+  after 90s. Every AI decision (tactical and strategic) queries only
+  this object, never the live enemy list, so "AI tidak omniscient" is
+  structural rather than a convention to remember.
+- **AMBUSH** (`scripts/ai/ambush_controller.gd`): a separate
+  multi-phase controller (IDLE → ARMED → COMMITTED) requiring both
+  fresh intel near a chokepoint and a real force-ratio advantage before
+  arming, a utility threshold scaled by difficulty, a 60s cooldown
+  (half that on a cancellation), and explicit cancellation if the
+  squad is wiped or intel/opportunity goes stale before the target
+  arrives.
+- **DIPLOMACY** (`scripts/diplomacy/diplomacy_controller.gd`): a new
+  `NeutralFactionData` third-party faction; neutral-encounter
+  attack/intimidate resolution that nudges a trust value (-1..1, slow
+  decay toward 0); alliance formation gated by a trust threshold with a
+  randomized 60-240s duration; a trade bonus on dealer sales while
+  allied; betrayal that instantly ends an alliance, imposes a sharp
+  trust penalty, and is itself cooldown-gated so it can't be spammed;
+  and a structural guarantee against shared victory (no such concept
+  anywhere in the class) plus `is_hostile_by_default()` so AI never
+  auto-targets the neutral faction.
+- **Difficulty** (`scripts/data/difficulty_data.gd` + the 3
+  `data/difficulty/*.tres`): 4 new knobs — `decision_quality`,
+  `utility_threshold_mult`, `retreat_hp_threshold`,
+  `ambush_intel_patience_sec` — every one of which only changes
+  decision timing/quality, never starting money, vision range, or unit
+  count (verified directly by the win-rate report's same-faction
+  cross-difficulty comparison; see docs/BALANCE.md).
+- **Debug overlay** (`scripts/ui/ai_debug_overlay.gd`,
+  `scenes/ui/AiDebugOverlay.tscn`): toggled with F3 in the live game,
+  shows per-faction objective/utility/reason-for-last-decision plus the
+  known-enemy list with fresh/stale tags; frees itself immediately in
+  `_ready()` when `OS.has_feature("release")`, the engine-verified way
+  to detect an actual exported release build (not an editor-only
+  project setting), so it structurally cannot ship in an export.
+- **Headless AI-vs-AI simulation**
+  (`scripts/simulation/ai_match_arena.gd`, `AiMatchArena`): wires up N
+  complete, independent faction economies (real Factory/Bank/Garage/
+  Dealer/CampaignEconomy) each fully driven by the above AI layers,
+  with real `BwUnit`/`Vehicle` combat and real `NavigationAgent2D`
+  pathing — the same shipped components, just now decided by AI
+  instead of a human or test script. A match resolves once one side's
+  Main Character dies (the single decisive, bounded event; full-roster
+  elimination could drag on indefinitely with ongoing
+  recruitment/revival on both sides).
+- **Win-rate report** (`tools/run_ai_winrate_report.gd`, acceptance:
+  "Laporkan hasil win-rate awal per faction/difficulty"): runs each of
+  the 4 campaigns against a reference opponent at all 3 difficulties
+  (both sides same difficulty, isolating faction balance), plus a
+  same-faction cross-difficulty comparison that directly demonstrates
+  Hard beating Medium and Medium beating Easy. Full captured output and
+  interpretation in docs/BALANCE.md "MVP5 initial AI win-rate report".
+- 6 new headless test suites (23 total):
+  `test_mvp5_information.gd`, `test_mvp5_tactical_ai.gd`,
+  `test_mvp5_ambush.gd`, `test_mvp5_diplomacy.gd`,
+  `test_mvp5_strategic_ai.gd` (isolated economy-loop proof, including a
+  real completed recruitment), and `test_mvp5_arena.gd` (the full
+  headless-multi-match harness smoke/correctness test).
+- A real bug found and fixed by this MVP's own simulation requirement:
+  the strategic AI initially never sent any unit to scout, so a
+  faction starting with zero intel could never discover its opponent
+  and every match timed out — fixed by adding `_manage_scouting()`
+  (Prompt Dasar "INFORMATION: Scout").
+- A development-only instrumentation mistake caught and corrected by
+  visual verification: an early pass attached the tactical-AI layer to
+  the map's small fixed hostile encounters (the "Hostile (PLACEHOLDER)"
+  squad and DEA response waves), which are deliberately stationary
+  (`can_move = false`) — the AI's `order_attack`/`order_move` calls on
+  them silently no-op, so it was dead, misleading weight. These fixed
+  encounters keep their existing, already-tested `auto_defend`
+  behavior; the real, mobile per-faction AI is exercised by
+  `AiMatchArena` instead (see docs/TECH_DECISIONS.md "MVP5 live-game AI
+  scope").
+- Manual Xvfb visual verification: captured the open-world map with the
+  F3 debug overlay toggled on, confirming it renders known-enemy
+  entries with correct fresh/stale tags and disappears entirely from
+  view when toggled off; not committed (screenshots shared directly in
+  chat/PR).
+
+Known simplifications, deferred to their stated MVP:
+- The live game's own fixed hostile encounters (test squad, DEA
+  response waves) do not run the new mobile STRATEGIC/TACTICAL AI —
+  they're stationary defenders by design from MVP1/3. A true rival
+  cartel AI faction roaming the open world is naturally MVP6/7
+  territory once campaign presentation adds a reason to populate the
+  other 3 HQs with active, moving factions.
+- Ambush chokepoints are supplied by the caller as plain `Vector2`
+  points (the arena uses one shared center point); no automatic
+  chokepoint detection from map geometry (bridges/alleys/narrow roads)
+  was built, since the open world map doesn't yet have dedicated
+  geometry for those features.
+
+## Next up: MVP 6 (not started)
+
+Per `Part 8.txt`: Campaign Presentation and User Experience. Not yet
+read in full; will be read before work begins per base rule 12 (stop
+and report after each MVP rather than proceeding automatically).

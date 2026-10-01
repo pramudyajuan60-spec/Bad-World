@@ -7,13 +7,26 @@ incrementally through a sequence of MVPs defined in
 `Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
 `Part 9.txt` (MVP 7, release candidate).
 
-**Current status: MVP 4 — Four Asymmetric Campaigns.**
-All four campaigns (Juan/Zie/Andrés/Nabil) are now playable from the
-menu, each with its own starting resources, roster rules, faction
-bonuses, Main Character abilities (with real cooldowns and
-counterplay), 3-4 unique Special units (unlocking at MC level 4), and
-Main Character leveling to 5 — layered on top of MVP3's open-world
-economy/vehicle loop and MVP1/2's RTS controls and weapon-data combat.
+**Current status: MVP 5 — Intelligent AI and Diplomacy.**
+Layered AI is implemented: a per-unit TACTICAL layer (target priority,
+flanking, proactive retreat, revive, protect-MC, grenade avoidance) and
+a per-faction STRATEGIC layer (recruitment, ammo/weapon resupply,
+factory upgrades, dealer selection, cash-running to the Bank,
+vehicle purchase/repair, HQ defense, scouting, and utility-gated
+raid/attack-MC decisions), both driven by real fog-of-war
+(`FactionKnowledge` — enemies are only known if actually seen, with
+last-known-position memory and staleness). A separate `AmbushController`
+arms and triggers ambushes only with intel + a real tactical advantage,
+and a `DiplomacyController` handles neutral encounters, trust, temporary
+alliances with a trade bonus, and betrayal. Difficulty (Easy/Medium/
+Hard) only changes decision quality/timing, never money or vision — a
+same-faction cross-difficulty test shows Hard beating Medium 3/3 and
+Medium beating Easy 3/3. A dev-only F3 debug overlay (structurally
+absent from release exports) shows live AI state/objective/utility, and
+a headless `AiMatchArena` runs full AI-vs-AI matches with a win-rate
+report per faction/difficulty — see docs/BALANCE.md. Layered on top of
+MVP4's four asymmetric campaigns, MVP3's open-world economy/vehicle
+loop, and MVP1/2's RTS controls and weapon-data combat.
 See docs/IMPLEMENTATION_PLAN.md for the full roadmap and what each MVP
 delivered.
 
@@ -56,6 +69,9 @@ delivered.
   now real in-world buildings in Central City (walk up + `E`), not
   always-visible buttons.
 - A minimap (bottom-right) shows unit/building positions.
+- `F3`: toggle the AI debug overlay (dev builds only — shows live
+  AI objective/utility/decision-reason and known-enemy intel; freed on
+  startup and structurally absent in a release export).
 
 ## Running the project
 
