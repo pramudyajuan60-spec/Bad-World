@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/faction_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"faction_dea"
+display_name = "DEA Administrator"
+asset_folder = "DEA Administrator"
+description = "Nabil Verhan's rebuilt DEA; no B1 units, slowest economy, strongest individual units, wins by eliminating every cartel Main Character and shutting down all cartel factories."

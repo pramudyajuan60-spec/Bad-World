@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/campaign_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_bellarosa.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"campaign_juan"
+menu_name = "Campaign Juan"
+main_character_name = "Juan Bellarosa"
+faction = ExtResource("2")
+starting_money = 4000
+story_path = "res://Assets/Campaign/Bellarosa Syndicate/Main Character/Story.txt"
+portrait_path = "res://Assets/Character Inspect/Juan.jpg"
+main_character_sprite_path = "res://Assets/Campaign/Bellarosa Syndicate/Main Character/Juan Bellarosa.png"
+concept_map_path = "res://Assets/Campaign/Bellarosa Syndicate/Maps/Juan Maps (Mafia).jpg"

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/faction_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"faction_nasion"
+display_name = "Nasion Familia"
+asset_folder = "Nasion Familia"
+description = "Andrés A. Násion's family-run cartel; fastest economy and Level 2 starting factory, weakest Main Character in a direct duel."

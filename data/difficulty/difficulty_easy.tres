@@ -1,0 +1,11 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/difficulty_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"difficulty_easy"
+display_name = "Easy"
+reaction_delay_sec = 2.5
+decision_interval_sec = 3.0
+notes = "Rarely flanks; attacks only with a large advantage; less effective at managing economy and ammo. No vision/money/unit cheats."
