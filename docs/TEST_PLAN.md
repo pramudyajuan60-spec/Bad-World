@@ -195,3 +195,83 @@ slots. Screenshots shared in the pull request, not committed to the repo.
 - No automated test for grenade-throwing via the `G`-armed hotkey path
   itself (the underlying explosive/AoE/friendly-fire mechanic it calls
   is tested directly in test_economy_and_safety.gd).
+
+## MVP 3 automated checks (all run and passing at time of writing)
+
+11. **Economy loop** (`tests/test_mvp3_economy_loop.gd`): a factory
+    produces cargo over simulated time (capped at its on-site max); a
+    unit picks up cargo, sells it at a dealer through the real 5s
+    channel, and deposits the resulting carried cash at the Bank
+    through the real 6s channel, with bank balance verified to
+    increase by exactly the deposited amount and never touched before
+    that point; two independent dealers are proven to track separate
+    demand curves; and a destroyed factory is proven to halt
+    production until repaired, then resume. Exit 0,
+    `[Tests] mvp3_economy_loop: all passed.`
+
+12. **Vehicles** (`tests/test_mvp3_vehicle.gd`): a 4-seat vehicle
+    accepts exactly 4 of 5 attempted entries; entering hides the unit
+    and marks it mounted/driver correctly, exiting restores it; a
+    moving turret is proven to deal measurably less damage than an
+    identical stationary one over the same duration; and repairing a
+    damaged vehicle restores full HP for a reported positive cost.
+    Exit 0, `[Tests] mvp3_vehicle: all passed.`
+
+13. **Heat + loot** (`tests/test_mvp3_heat_and_loot.gd`): a DEA wave
+    dispatches only after both the full 120s combat timer and the 60s
+    travel delay elapse (not before); heat decays instead of
+    eventually dispatching on its own if combat stops early; exactly 2
+    waves dispatch and a 3rd is blocked by the cluster cooldown; the
+    picked spawn point is always far from the player; and a downed
+    carrier is proven to drop its exact cargo/cash amounts as loot,
+    emptying itself. Exit 0, `[Tests] mvp3_heat_and_loot: all passed.`
+
+14. **Save/load extension** (`tests/test_mvp3_save_load.gd`): loads
+    the real `OpenWorldMap` scene, mutates money/factory level+cargo/
+    Heat wave count/a unit's carried cargo+cash, adds a placed vehicle,
+    saves to a dedicated test slot, reloads the scene from that slot,
+    and checks every one of those fields round-trips correctly. Exit 0,
+    `[Tests] mvp3_save_load: all passed.`
+
+Two real bugs were caught and fixed while writing these (both now
+documented in `docs/TECH_DECISIONS.md`): `Object.get_meta(key, null)`
+still logs a spurious `ERROR` for a missing key in Godot 4.3 even
+though it correctly returns the null default (fixed with a `has_meta()`
+guard in `drug_dealer.gd`); and a from-scratch isolated repro
+reconfirmed that GDScript lambdas connected to a signal cannot mutate
+an outer captured local (a test counter incremented inside such a
+lambda stayed at 0 after two signal emissions) — every MVP3 signal-
+payload assertion uses a bound method on the test script instead.
+
+## MVP 3 manual visual verification
+
+Same Xvfb + Mesa llvmpipe approach as MVP1/2. Confirmed via screenshots
+at three camera positions: the Bellarosa region (Juan + 3×B1 spawned,
+enemy squad, HQ marker, Factory building, all correctly placed and
+rendered); Central City (Bank/Recruitment/Gun Shop/Garage all placed
+and labeled); and a zoomed-out full-world view confirming all 5 regions
+sit in the correct compass positions relative to each other (Bellarosa
+NW, DEA NE, Nasion SW, Vartieri SE, Central City center) matching the
+layout `Assets/Game Maps/World.png` describes, with the minimap in the
+corner showing proportionally correct dot positions for the same
+buildings. Screenshots shared in the pull request, not committed to
+the repo.
+
+## Known gaps not covered by MVP 3 tests
+
+- No automated test drives the actual `E`-key interaction path
+  end-to-end through `CommandController`/`open_world_map.gd`'s
+  `_handle_interact()` — the underlying building methods it calls
+  (`try_pickup`, `start_sell`, `start_deposit`, `try_repair`) are each
+  tested directly.
+- No automated test for the DEA response wave's actual unit/vehicle
+  composition once spawned into a live scene (only the *timing* and
+  *spawn-point* logic in `heat_manager.gd` are tested in isolation).
+- No automated test for Patrol Mode's return-to-route-after-combat
+  behavior (manually reasoned through the same tested state-machine
+  code path as attack-move, but not scripted end-to-end).
+- Navigation/vehicle profiling (`tools/profile_navigation_and_vehicles.gd`)
+  was run once headlessly for this report (see docs/IMPLEMENTATION_PLAN.md
+  "MVP 3 delivered scope"); it is not a repeated/automated regression
+  check, and its headless-pacing caveat means it's a sanity check, not
+  a strict unpaced CPU benchmark.

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/vehicle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"vehicle_gun_truck"
+display_name = "Gun Truck"
+vehicle_class = 2
+price = 5500
+seat_capacity = 5
+has_turret = true
+moving_accuracy_penalty = 20.0

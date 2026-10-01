@@ -36,6 +36,11 @@ var destination_marker_scene: PackedScene
 ## Populated/maintained by the owning gameplay scene; not queried via
 ## get_tree() groups so tests can substitute a plain array.
 var enemy_units: Array = []
+## MVP3: returns all Vehicle instances currently in the mission (both
+## player-owned and hostile), set by the owning gameplay scene.
+var vehicles_getter: Callable = Callable()
+var _patrol_armed: bool = false
+const VEHICLE_PICK_RADIUS := 40.0
 
 var _box_start: Vector2 = Vector2.ZERO
 var _box_dragging: bool = false
@@ -137,6 +142,24 @@ func _handle_right_click(pos: Vector2) -> void:
 		_grenade_armed = false
 		_recruit_armed = false
 		return
+	var vehicle = _find_nearest_vehicle(pos)
+	if vehicle and vehicle.faction_side == &"player" and vehicle.has_free_seat():
+		for u in selected:
+			if u.mounted_vehicle == null:
+				u.order_enter_vehicle(vehicle)
+		_attack_move_armed = false
+		_grenade_armed = false
+		_recruit_armed = false
+		return
+	if _patrol_armed:
+		for u in selected:
+			u.order_patrol(pos)
+		_spawn_destination_marker(pos)
+		_patrol_armed = false
+		_attack_move_armed = false
+		_grenade_armed = false
+		_recruit_armed = false
+		return
 	if _grenade_armed:
 		for u in selected:
 			u.order_use_grenade(pos)
@@ -175,6 +198,22 @@ func _find_downed_ally(pos: Vector2, selected: Array) -> BwUnit:
 	return nearest
 
 
+func _find_nearest_vehicle(pos: Vector2):
+	if not vehicles_getter.is_valid():
+		return null
+	var vehicles: Array = vehicles_getter.call()
+	var nearest = null
+	var nearest_dist := VEHICLE_PICK_RADIUS
+	for v in vehicles:
+		if not is_instance_valid(v):
+			continue
+		var d: float = pos.distance_to(v.global_position)
+		if d <= nearest_dist:
+			nearest_dist = d
+			nearest = v
+	return nearest
+
+
 func _handle_key(event: InputEventKey) -> void:
 	match event.keycode:
 		KEY_S:
@@ -189,6 +228,12 @@ func _handle_key(event: InputEventKey) -> void:
 			_grenade_armed = true
 		KEY_R:
 			_recruit_armed = true
+		KEY_P:
+			_patrol_armed = true
+		KEY_X:
+			for u in selection_manager.selected:
+				if u.mounted_vehicle != null:
+					u.mounted_vehicle.exit_unit(u)
 		KEY_ESCAPE:
 			pause_requested.emit()
 		_:
