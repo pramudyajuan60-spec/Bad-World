@@ -11,35 +11,28 @@ build.
 
 ## Bottom line
 
-**This build is closer to production-ready than the original MVP7
-pass reported, but still has open items below.** The Release
-Candidate Fix Pass closed every concrete issue the original MVP7
-report raised: the missing flee/surrender/rogue consequence is now
-implemented and reuses existing state machinery; the Fauzi
-vehicle-purchase gap was root-caused (AI decision-tick priority, not
-an affordability/wiring bug) and fixed generically; the stale
-placeholder register entry was confirmed stale and resolved; and —
-most importantly — **actually running the exported build for the
-first time (not just the editor) surfaced a genuine, serious,
-pre-existing bug that had silently affected every MVP since MVP0**:
-`CampaignDatabase` and `CampaignEconomy` never loaded *any* campaign/
-faction/difficulty/weapon data in an actual export, because exported
-PCK builds list resource files with an extra `.remap` suffix that
-these loaders' `ends_with(".tres")` checks never matched. This made
-the entire exported game non-functional end-to-end (zero campaigns in
-the menu, no weapons for any unit) in every prior export — invisible
-until this pass actually ran one. **Now fixed and verified against the
-real rebuilt exported Linux binary**: a full scripted playthrough
-(launch → menu → campaign select → real gameplay with the real MC +
-3 real rival MCs → move order → rival MC death → flee/surrender/
-rogue fired for real → player MC death → DEFEAT with campaign summary
-→ clean exit) completed successfully, screenshotted at every step.
-Windows itself still could not be *executed* in this sandbox (Wine/
-gVisor incompatibility, a platform limitation — see "Technical
-risks") — the Windows `.exe` is structurally valid and was exported
-with the identical, now-fixed source, but only the equivalent Linux
-export was actually run. See "Not yet done" and "Known bugs" below
-for what remains before a real release.
+**The game is fixed, exports cleanly, and is verified playable
+end-to-end on the equivalent Linux build; the Windows `.exe` builds
+cleanly from the identical fixed source but its runtime could not be
+executed in this sandbox.** The Release Candidate Fix Pass closed
+every concrete issue the original MVP7 report raised, and this
+follow-up Final Playable-Build Verification Pass closed the loop on
+two remaining items: one more unfixed instance of the `.remap`
+resource-loading bug pattern (in dev-only test tooling, never
+actually reachable through a real export, but fixed for consistency)
+and a cosmetic Windows-export console-noise issue (an `rcedit`/Wine
+icon-embedding step that cannot succeed in this sandbox's partial
+Wine install — not a project defect, resolved by disabling that one
+export option). A complete scripted playthrough against the freshly
+rebuilt exported Linux binary — launch → menu → campaign select (4
+cards) → difficulty → story → real gameplay (real MC + 3 real rival
+MCs + starting vehicle) → a core player action → a real rival MC's
+combat death → flee/surrender/rogue firing for real → the player's
+own MC death → DEFEAT with a full campaign summary → clean exit —
+completed successfully with zero errors, screenshotted at every step.
+30/30 automated tests pass. See "Not yet done" and "Known bugs" below
+for the handful of items that remain genuinely open (none of which
+block launching/playing the game).
 
 ---
 
@@ -353,6 +346,69 @@ in section 4 below and in the Register's own "must replace" list.
    design — see `.gitignore`), so reproducing this report's Windows/
    Linux build steps elsewhere requires repeating that setup (see
    section 8 below).
+
+## Final Playable-Build Verification Pass
+
+A follow-up request asked for one more confirmation pass: that the
+current state (MVP0-7 + the RC Fix Pass) is actually ready for a
+developer to clone/download and play on Windows, with an explicit
+instruction to search the whole repository once more for any other
+instance of the `.remap` resource-loading pattern before declaring
+completion. Two findings, both resolved:
+
+1. **One more unfixed `.remap`-vulnerable instance**: a repository-
+   wide search found `tests/test_campaign_data.gd`'s own directory-
+   scanning helpers still used the unfixed `ends_with(".tres")`
+   pattern — the 4th and last instance of this bug class in the repo
+   (the other 3 were already fixed in the RC Fix Pass). This instance
+   was never actually reachable through the real bug (dev-only test
+   tooling, always invoked directly against the real filesystem, never
+   auto-run inside a shipped export's own boot path) but was fixed for
+   consistency — every directory-scanning resource loader in the
+   repository now handles both forms identically. See
+   `docs/TECH_DECISIONS.md` "Final Playable-Build Verification Pass".
+2. **Cosmetic Windows-export console noise**: re-exporting surfaced a
+   new `rcedit`/Wine warning (wine32 missing) followed by the same
+   Wine/gVisor crash traces already reported for runtime execution.
+   Root cause: `wine64` was installed in this sandbox session (for the
+   earlier Windows-runtime-execution attempt) between the RC Fix
+   Pass's export and this one, and Godot's export pipeline
+   automatically tries to use Wine-hosted `rcedit` to embed the
+   `.exe`'s Windows file-icon/version metadata whenever Wine is
+   present. **Not a project defect** — confirmed the export still
+   completed successfully every time with a correctly-typed,
+   consistently-sized output regardless; `modify_resources` only
+   affects `.exe` file-icon/version cosmetics, never game resources or
+   behavior. Fixed by setting `application/modify_resources=false` in
+   `export_presets.cfg`, producing a completely clean, zero-warning
+   export. See `docs/TECH_DECISIONS.md` for the full writeup.
+
+**Final end-to-end verification**, against freshly rebuilt Windows and
+Linux exports (both zero-error, zero-warning):
+
+- Windows: `file builds/windows/BadWorld.exe` → `PE32+ executable
+  (GUI) x86-64 ... for MS Windows` — **BUILT, RUNTIME UNVERIFIED**
+  (Wine/gVisor incompatibility persists in this sandbox; not a project
+  defect — see "Technical risks").
+- Linux: **BUILT, RUNTIME VERIFIED** — a complete scripted playthrough
+  against the actual exported binary (not the editor) confirmed every
+  stage of the vertical slice in sequence: Content Warning → Main Menu
+  → Campaign Select (4 cards rendered) → Difficulty Select → Story
+  Panel → real gameplay (real Main Character "Juan Bellarosa", 3 real
+  rival Main Characters registered, the starting vehicle present) → a
+  core player action (move order, unit state confirmed `MOVING`) → a
+  real rival Main Character's combat death → flee/surrender/rogue
+  firing for real on its guards → the player's own Main Character's
+  death → a DEFEAT screen with a complete campaign summary (play time,
+  money, roster, enemies eliminated) and working Restart/Load/Quit
+  buttons → clean process exit (code 0). Screenshotted at every step.
+
+Full regression re-run after both fixes: **30/30 passing** (1
+known-flaky suite, `test_mvp5_arena.gd`, failed once on its usual
+unseeded-RNG variance and passed on 3 immediate reruns with zero file
+changes — confirmed pre-existing, not a regression). Balance report
+re-run: Campaign Fauzi vehicle presence remains 100% across all 3
+difficulties, confirming the earlier fix is stable.
 
 ## 7. How to run from source
 

@@ -98,6 +98,18 @@ delivered.
 
 ## How to Play
 
+### Requirements
+
+- **Godot 4.3 stable** (exactly `4.3.stable`) if running from source —
+  see Option A below. Not needed if just running a pre-built export.
+- **Windows**: any 64-bit Windows (10/11) with no additional runtime
+  or dependency — both export presets embed the `.pck` game-data
+  archive directly inside the `.exe` (`binary_format/embed_pck=true`
+  in `export_presets.cfg`), so it is a single self-contained file;
+  nothing else needs to sit beside it.
+- **Linux**: any 64-bit glibc-based distro; same embedded-`.pck`
+  self-contained executable.
+
 ### Option A — Run from Godot (recommended, works on any OS)
 
 1. Install **Godot 4.3 stable** (exactly this version — see

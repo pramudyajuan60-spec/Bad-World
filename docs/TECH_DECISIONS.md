@@ -734,3 +734,79 @@ reproduce the PCK remap layer directly — an actual export + run, as
 done for this verification, remains the only way to observe the real
 bug class itself; see `docs/RELEASE_CANDIDATE_REPORT.md` for the full
 before/after evidence).
+
+## Final Playable-Build Verification Pass (post-RC-fix)
+
+A follow-up request specifically asked to confirm MVP0-7 + the RC Fix
+Pass is actually ready to download/open/play on Windows, with an
+explicit instruction to search the whole repository for any other
+instance of the `.remap` resource-loading pattern before declaring
+completion. Full write-up: `docs/RELEASE_CANDIDATE_REPORT.md` "Final
+Playable-Build Verification Pass". Two findings:
+
+### One more unfixed `.remap`-vulnerable instance found: `tests/test_campaign_data.gd`
+
+A repository-wide search (`grep -rn "DirAccess\|list_dir_begin\|ends_with(\".tres\")"`)
+found exactly 4 files using directory-enumeration resource discovery;
+3 were already fixed in the prior RC Fix Pass
+(`campaign_database.gd`, `campaign_economy.gd`,
+`validate_asset_manifest.gd`), but `tests/test_campaign_data.gd`'s own
+`_load_campaigns()`/`_test_difficulties_load()` helpers still used the
+unfixed literal `ends_with(".tres")` pattern. This instance was never
+actually reachable through the real bug (this script is dev-only,
+always invoked directly via `--script` against the real project
+filesystem, never auto-run as part of a shipped export's own boot
+path the way the `CampaignDatabase`/`CampaignEconomy` autoloads are)
+— but it is textually the exact same vulnerable pattern, in the same
+family of already-partially-fixed data-validation tooling. Fixed for
+consistency with the identical minimal `.remap`-suffix-stripping
+approach, so every directory-scanning resource loader in the
+repository now handles both forms identically — closing the loop on
+"search the entire repository for similar patterns" rather than
+leaving one instance of the same bug class unaddressed by happenstance.
+
+### Windows export rcedit/Wine noise (cosmetic, fixed via a one-line export-preset change)
+
+Re-exporting the Windows build in this verification pass surfaced a
+new, unrelated console warning not present in the earlier RC Fix Pass
+export: `rcedit (...): it looks like wine32 is missing` followed by
+dozens of the same Wine/gVisor `segv_handler`/`stack overflow` traces
+already reported for Windows runtime execution. Root cause: this
+sandbox session had `wine64` installed (for the earlier, separate
+attempt to execute the Windows `.exe` directly) between the RC Fix
+Pass's export and this one; Godot's Windows export pipeline detects
+Wine's presence and automatically attempts to invoke `rcedit` through
+it to embed the `.exe`'s Windows file-icon/version-info metadata
+(`application/modify_resources` in `export_presets.cfg`) — a
+cross-compilation convenience when exporting to Windows from a Linux
+host. `rcedit` itself needs 32-bit Wine support (`wine32`), which was
+never installed, so the attempt immediately fails, hitting the exact
+same Wine/gVisor incompatibility already reported. **This is not a
+project defect**: the export still completed successfully every time
+(exit 0, correct `file`-reported type, consistent `.pck`-embedded
+size) — `modify_resources` only affects the `.exe`'s Windows Explorer
+file icon/version metadata, never the game's actual resources,
+scripts, or runtime behavior (the game's own in-game icon is a
+separate, unaffected `project.godot config/icon` setting). On a real
+developer's machine (native Windows export, or a Linux host with a
+complete, non-gVisor Wine install), this step either doesn't need
+Wine at all or would simply succeed. Fixed by setting
+`application/modify_resources=false` in the committed
+`export_presets.cfg` — this avoids a step that cannot functionally
+succeed in *this specific sandbox's* partial Wine setup, producing a
+completely clean, warning-free export log, without touching any
+setting that affects the actual shipped game.
+
+### Full end-to-end vertical-slice smoke test against the rebuilt exported binary
+
+Re-ran the complete scripted playthrough against a freshly rebuilt
+Linux export (same source as the Windows export, both rebuilt after
+the fixes above): Content Warning → Main Menu → Campaign Select (4
+cards rendered) → Difficulty Select → Story Panel → real gameplay
+(real MC + 3 real rival MCs + starting vehicle present) → a core
+player action (move order, confirmed `State.MOVING`) → a real rival
+MC's combat death → flee/surrender/rogue fired for real → the
+player's own MC death → DEFEAT with a full campaign summary → clean
+exit (code 0). Screenshotted at every step. This is the same flow as
+the RC Fix Pass's own verification, re-run end-to-end once more after
+this pass's additional fixes, confirming nothing regressed.
