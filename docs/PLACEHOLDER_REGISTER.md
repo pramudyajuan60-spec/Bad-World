@@ -28,7 +28,7 @@
 | PLACEHOLDER_destination_marker | Themed move-order marker VFX | Active (MVP 1) | No | `scripts/gameplay/destination_marker.gd` draws a plain X-in-circle, auto-frees after ~0.9s. |
 | PLACEHOLDER_dummy_enemy_squad | A real hostile faction encounter | Active (MVP 1) | No | `bellarosa_test_map.gd` spawns 4 units named "Hostile (PLACEHOLDER)", faction_side `enemy_dummy`, with no faction identity, art, or AI beyond firing back if approached. Exists purely so MVP 1's "basic attack-move and target acquisition" criterion is testable. Replace with a real faction encounter once MVP 4/5 AI exists. |
 | PLACEHOLDER_hud_panels | Themed Recruitment/Gun Shop/Inspect building UI | Active (MVP 2) | No | `scripts/ui/recruitment_panel.gd`, `gun_shop_panel.gd`, `inspect_panel.gd` are built entirely from generic `Button`/`Label` controls in code, not themed art or a `.tscn` layout. Functionally complete and tested; MVP 6 replaces the visuals. |
-| PLACEHOLDER_building_interaction | In-world walk-up building interaction | Active (MVP 2) | No | Recruitment/Gun Shop/Bank are opened via always-visible HUD buttons, not by clicking a building placed in the world (no real buildings exist on this test map yet). Deferred until MVP 3 places actual buildings from `Assets/Game Maps/` in the open world. |
+| ~~PLACEHOLDER_building_interaction~~ | ~~In-world walk-up building interaction~~ | **Resolved (MVP 3), row removed by Release Candidate Fix Pass audit** | — | Was never an actual literal `PLACEHOLDER`-marked file/data entry (confirmed: zero matches for the literal string anywhere in `.gd`/`.tres`/`.tscn`) — a documentation-only row describing an MVP2-era gap. `open_world_map.gd::_handle_interact()` has required real walk-up `E`-to-interact at the Factory/Dealers/Bank/Recruitment/Gun-Shop-or-Armory/Garage since MVP3, with no always-visible HUD button left for any of them (verified: `recruitment_panel`/`gun_shop_panel` are both only ever toggled from `_handle_interact()`, default `visible = false`). Kept here struck through rather than silently deleted, per this project's own placeholder-register policy ("removing a row requires replacing the placeholder... and noting the change here"). |
 | PLACEHOLDER_explosive_projectile_flight | Visible grenade/RPG flight arc | Active (MVP 2) | No | `WeaponData.is_hitscan = false` triggers a timed delay (distance / projectile speed) before the AoE applies, with no moving visual node — see docs/TECH_DECISIONS.md. The *mechanical* hitscan-vs-projectile distinction is real and tested; only the visual flight is deferred. |
 | PLACEHOLDER_region_hq_markers | Functional DEA/Nasion/Vartieri HQ buildings | Active (MVP 3) | No | `open_world_map.gd::_add_region_marker` draws a plain tinted rectangle + label for the DEA, Nasion, and Vartieri HQs (each named with "(PLACEHOLDER)"). They exist purely as world landmarks matching Prompt Dasar's world-structure description; no recruitment/economy/combat function until MVP4 makes those campaigns playable. |
 | PLACEHOLDER_dea_responder_visuals | Real DEA unit sprites/identity | Active (MVP 3) | No | DEA response-wave units spawn with `display_name` "DEA Responder (PLACEHOLDER)" / "DEA Commander (PLACEHOLDER)", reusing the same procedural-shape `BwUnit` visuals as the MVP1 dummy squad. Real DEA identity/art arrives with Campaign Nabil in MVP4. |
@@ -124,13 +124,11 @@ player, not just unthemed.
   TACTICAL/STRATEGIC/INFORMATION/AMBUSH/DIPLOMACY layers already exist
   and are proven in `AiMatchArena` — this is "wire it into the live
   scene," not "build it from scratch").
-- **PLACEHOLDER_building_interaction** — confirm this row is stale:
-  MVP3 *did* place real walk-up buildings with `E`-to-interact (see
-  `open_world_map.gd::_handle_interact`); this Register row predates
-  that and should be removed once someone double-checks no leftover
-  always-visible-button path remains. Not re-verified in this MVP7
-  pass (out of its stated scope) — flagged here rather than silently
-  left stale.
+- ~~**PLACEHOLDER_building_interaction**~~ — **Resolved by the Release
+  Candidate Fix Pass**: confirmed stale and struck through in the
+  Register above (MVP3 already built real walk-up `E`-to-interact
+  buildings; no literal `PLACEHOLDER`-marked asset/data for this ever
+  existed; no leftover always-visible-button path remains).
 - **Rogue/surrender/flee behavior not implemented at all** (not
   previously its own Register row — added here by this MVP7 audit,
   Prompt Dasar base rules: "Jika Main Character musuh mati: ... Unit

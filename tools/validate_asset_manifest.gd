@@ -53,8 +53,15 @@ func _validate_campaign_references() -> bool:
 	var file_name := dir.get_next()
 	var checked := 0
 	while file_name != "":
-		if file_name.ends_with(".tres"):
-			var campaign: CampaignData = load("res://data/campaigns/" + file_name)
+		# Release Candidate Fix Pass: same ".remap"-suffix fix as
+		# campaign_database.gd/campaign_economy.gd — matters here too
+		# since this tool is dev tooling meant to validate the real
+		# shipped resource set, not just editor-mode behavior.
+		var real_name: String = file_name
+		if real_name.ends_with(".remap"):
+			real_name = real_name.substr(0, real_name.length() - ".remap".length())
+		if real_name.ends_with(".tres"):
+			var campaign: CampaignData = load("res://data/campaigns/" + real_name)
 			checked += 1
 			var paths := [campaign.story_path, campaign.portrait_path, campaign.main_character_sprite_path, campaign.concept_map_path]
 			for p in paths:

@@ -93,12 +93,28 @@ func _physics_process(delta: float) -> void:
 	_decide_timer = interval
 
 	current_objective = "Idle"
+	# MVP7 Release Candidate Fix Pass (Issue 2): vehicle purchase used to
+	# run after recruitment/factory-upgrade, so a faction's cash was
+	# already spent down before affordability was even checked. Factions
+	# with the highest recruitment costs among their peer group (Zie/
+	# Vartieri: $330/$850/$1900/$6500, the most expensive of the 3
+	# cartels) almost never kept $1800 (the Compact's price) idle long
+	# enough to cross _manage_vehicles()'s threshold — confirmed via a
+	# standalone probe showing her money oscillating $440-$1100 for the
+	# entire match while recruitment/factory repeatedly consumed it
+	# first. This is "incorrect AI priority" (one of the root-cause
+	# categories this fix pass was asked to check), not an affordability
+	# or wiring bug: _manage_vehicles() itself was always correct. Moving
+	# it first lets a faction spend its starting capital on a vehicle
+	# before recruitment/factory-upgrade compete for the same cash on
+	# the very first decision tick, with zero change to either
+	# function's own logic/thresholds — see docs/TECH_DECISIONS.md.
+	_manage_vehicles()
 	_manage_recruitment()
 	_manage_ammo_and_weapons()
 	_manage_factory()
 	_assign_runners()
 	_advance_runners()
-	_manage_vehicles()
 	_manage_defense()
 	_manage_scouting()
 	_consider_raid()

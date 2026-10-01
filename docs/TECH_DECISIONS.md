@@ -575,3 +575,238 @@ These are accepted as known, harmless flakiness (not re-seeded or
 otherwise hardened in this pass, to keep MVP7's own change scope to
 what it actually needed) rather than silently ignored — see
 docs/RELEASE_CANDIDATE_REPORT.md "Known bugs/technical risks".
+
+## Release Candidate Fix Pass (post-MVP7)
+
+Per a dedicated fix-pass request targeting the issues
+`docs/RELEASE_CANDIDATE_REPORT.md` itself identified. Full write-up:
+`docs/RELEASE_CANDIDATE_REPORT.md` "Release Candidate Fix Pass"
+section. Key technical decisions:
+
+### Main Character death consequences: tier weights derived from the existing payroll-desertion precedent
+
+Prompt Dasar gives no exact flee/surrender/rogue odds ("Unit tersisa
+dapat kabur, menyerah, atau menjadi rogue **berdasarkan tier**" — based
+on tier, no numbers given). Rather than invent arbitrary numbers, this
+fix pass derived weights from the one tier-based loyalty precedent the
+project already has — the payroll-desertion rule ("Dua siklus: B1
+dapat desertir; B2/B3/Special tetap ada tetapi mendapat penalti
+combat"): the cheapest/weakest tier (B1) is the most likely to
+abandon the fight, the toughest regular tier (B3) the least:
+```
+B1: 50% flee / 30% surrender / 20% rogue
+B2: 30% flee / 35% surrender / 35% rogue
+B3: 15% flee / 35% surrender / 50% rogue
+```
+Special is deliberately excluded from the roll entirely — Prompt Dasar
+states outright "Special tidak menyerah" (never surrenders) and
+"Special terus bertempur" (keeps fighting), so a Special's fate is
+fixed at ROGUE (unchanged combat behavior, just flagged
+`has_gone_rogue = true` for inspectability), not rolled.
+
+### Surrender reuses the existing DOWNED state end-to-end, not a new state
+
+"Menyerah" (surrender) transitions a unit directly into `State.DOWNED`
+via the same `_enter_downed()` every combat-induced down already uses
+— same `downed_timer` countdown, same execute/recruit/revive
+interactivity, same HUD treatment. This reuses 100% of existing,
+already-tested state machinery (the explicit instruction: "If the
+project already has state types for... reuse them instead of creating
+duplicate systems"). The only genuinely new field is `BwUnit.has_gone_rogue:
+bool`, used purely for the ROGUE outcome (which needs no new combat
+logic at all — a rogue unit already behaves exactly as before via its
+existing `auto_defend`).
+
+One real pre-existing assumption this broke and required fixing:
+`open_world_map.gd`'s save/load path only re-entered `DOWNED` on load
+when `saved_hp <= 0.0`, because before this fix pass a unit could only
+ever reach `DOWNED` via lethal combat damage (hp always exactly 0). A
+surrendered unit is now `DOWNED` with whatever hp it had when it gave
+up (not necessarily 0) — loading with the old hp-gated condition would
+have silently "stood them back up" instead of preserving the surrender
+across a save/load cycle. Fixed by re-entering `DOWNED` whenever
+`saved_state == DOWNED`, regardless of hp, setting `hp` directly
+(bypassing `set_hp()`'s own auto-downed-trigger to avoid a redundant
+double-entry) before doing so.
+
+### "Kabur" (flee): a short, bounded, generic escape — not full pathfinding to a map edge
+
+A fleeing unit gets `can_move` temporarily re-enabled (these are
+stationary `can_move = false` fixed encounters by design — see "MVP5
+live-game AI scope" above), is ordered away from `player_hq_position`
+by a fixed distance (clamped to `MAP_BOUNDS`), and despawns after a
+flat `FLEE_DESPAWN_SEC` (8s) regardless of whether it precisely
+reached that point — "kabur" means the player no longer has to deal
+with them, not that the player must watch them path exactly to a
+coordinate. Flee timers are deliberately not persisted across save/
+load (pure runtime bookkeeping), matching the existing fidelity level
+of the save system (patrol points aren't reconstructed on load either).
+
+### Main Character death consequences only ever apply to the losing side, never the player's own
+
+Prompt Dasar describes two *distinct* branches: player MC death →
+immediate DEFEAT (unchanged, already correct since MVP6); enemy MC
+death → that faction eliminated + flee/surrender/rogue for survivors.
+`_apply_mc_death_consequences(faction_side)` is written generically (not
+hardcoded "enemy only") so it would work correctly if ever invoked for
+the player's side, but it is only ever actually invoked from
+`_on_enemy_died` — the player's own MC death goes through the entirely
+separate `_on_player_mc_died` → `victory_defeat_screen.show_result(false, ...)`
+path and never reaches this function. "Where applicable" (this fix's
+own phrasing) therefore correctly excludes the player's side here.
+
+### Fixed: Fauzi (Zie/Vartieri) AI never bought a vehicle — root cause was tick-order priority, not a wiring bug
+
+Investigated the full purchase pipeline end-to-end with a standalone
+probe script driving just her `FactionStrategicAI` in isolation,
+logging money/vehicle-count every ~10 simulated seconds.
+`_manage_vehicles()` itself was always correct (`owned.size() >= 1:
+return`; `economy.can_afford(cheapest.price)` gate) — the real cause
+was `_physics_process()`'s call order: `_manage_recruitment()` ran
+*before* `_manage_vehicles()` every decision tick, with no reserve set
+aside for the one-time vehicle purchase. Zie's recruitment costs
+(B1 $330/B2 $850/B3 $1900/Special $6500) are the highest of the three
+cartel factions (Juan's and Andrés's are both lower at every tier),
+so her cash almost never idled above the Compact's $1800 price by the
+time the vehicle check ran — confirmed directly: the probe showed her
+money oscillating $440-$1100 for the entire ~100s match while
+recruitment/factory-upgrade repeatedly consumed it first. This matches
+"incorrect AI priority," one of the root-cause categories this fix
+pass was explicitly asked to check for, rather than "purchase
+threshold too high" or a wiring/affordability bug.
+
+Fix: moved `_manage_vehicles()` to run *first* in the decision order,
+before recruitment/factory-upgrade compete for the same cash. No
+change to either function's own logic/thresholds. Verified: the same
+probe now shows Zie buying the Compact on her very first decision tick
+using starting capital (before recruitment ever touches it); the full
+balance report (3 trials × 4 campaigns × 3 difficulties = 36 total AI
+matches) now shows **100% vehicle presence across all 12
+faction/difficulty cells** (previously 0% for all 3 Fauzi rows, 100%
+for everyone else). Deliberately did not special-case Zie — the fix
+is a single, faction-agnostic reorder, and every other faction's
+vehicle-purchase success rate was already 100% either way, so this
+could not have been "faked" by targeting her specifically.
+
+### Fixed: `CampaignDatabase`/`CampaignEconomy` never loaded any data in an actual export — the most serious bug this fix pass found
+
+This fix pass's Windows/Linux export verification (Issue 3/5) surfaced
+a critical, pre-existing, **export-only** bug that had silently gone
+undetected through every prior MVP (0-7): an exported/PCK build's
+`DirAccess.get_next()` lists resource files with Godot's own internal
+redirection suffix appended — `"faction_bellarosa.tres"` is listed as
+`"faction_bellarosa.tres.remap"` — but `CampaignDatabase._load_dir()`,
+`CampaignEconomy._load_weapon_catalog()`, and
+`tools/validate_asset_manifest.gd._validate_campaign_references()` all
+matched filenames with a literal `file_name.ends_with(".tres")` check,
+which **never matches** the `.remap`-suffixed form. Every single
+campaign/faction/difficulty/weapon resource therefore silently failed
+to load in any real export — confirmed directly by running the actual
+exported Linux binary (not the editor) headful under Xvfb: console
+printed `[CampaignDatabase] loaded 0 faction(s), 0 campaign(s), 0
+difficulty(ies)`, and a scripted smoke-test driver hit a null-MC crash
+loop trying to enter gameplay. This had been invisible through every
+previous MVP's own verification because every single one of them ran
+via `godot4 --headless --path .` (editor/script mode), which reads the
+real on-disk filesystem directly with no `.remap` indirection layer at
+all — the bug could only ever be observed by running an actual export,
+which this fix pass's Issue 5 ("make the game actually playable on
+Windows/export") was the first to require.
+
+Fix: at all 3 call sites, strip a trailing `".remap"` suffix before the
+`.ends_with(".tres")` check and before calling `load()` (which must be
+given the real, un-suffixed resource path regardless of which form
+`DirAccess` reported — confirmed empirically: `load()` and
+`ResourceLoader.exists()` both work correctly on the un-suffixed path
+inside the export; Godot's own loader internally consults the remap
+table). Verified end-to-end against the real rebuilt exported Linux
+binary: `[CampaignDatabase] loaded 4 faction(s), 4 campaign(s), 3
+difficulty(ies)`, followed by a full scripted playthrough (launch →
+menu → campaign select → gameplay with the real MC + 3 real rival MCs
+→ move order → rival MC death → flee/surrender/rogue fired for real →
+player MC death → DEFEAT screen with full campaign summary → clean
+exit) screenshotted at every step. New regression test:
+`tests/test_rc_export_remap_resilience.gd` asserts the *symptom*
+directly (non-empty `factions`/`campaigns`/`difficulties`/
+`weapon_catalog`) so this specific class of regression is caught even
+though the test itself runs in editor/script mode (which cannot
+reproduce the PCK remap layer directly — an actual export + run, as
+done for this verification, remains the only way to observe the real
+bug class itself; see `docs/RELEASE_CANDIDATE_REPORT.md` for the full
+before/after evidence).
+
+## Final Playable-Build Verification Pass (post-RC-fix)
+
+A follow-up request specifically asked to confirm MVP0-7 + the RC Fix
+Pass is actually ready to download/open/play on Windows, with an
+explicit instruction to search the whole repository for any other
+instance of the `.remap` resource-loading pattern before declaring
+completion. Full write-up: `docs/RELEASE_CANDIDATE_REPORT.md` "Final
+Playable-Build Verification Pass". Two findings:
+
+### One more unfixed `.remap`-vulnerable instance found: `tests/test_campaign_data.gd`
+
+A repository-wide search (`grep -rn "DirAccess\|list_dir_begin\|ends_with(\".tres\")"`)
+found exactly 4 files using directory-enumeration resource discovery;
+3 were already fixed in the prior RC Fix Pass
+(`campaign_database.gd`, `campaign_economy.gd`,
+`validate_asset_manifest.gd`), but `tests/test_campaign_data.gd`'s own
+`_load_campaigns()`/`_test_difficulties_load()` helpers still used the
+unfixed literal `ends_with(".tres")` pattern. This instance was never
+actually reachable through the real bug (this script is dev-only,
+always invoked directly via `--script` against the real project
+filesystem, never auto-run as part of a shipped export's own boot
+path the way the `CampaignDatabase`/`CampaignEconomy` autoloads are)
+— but it is textually the exact same vulnerable pattern, in the same
+family of already-partially-fixed data-validation tooling. Fixed for
+consistency with the identical minimal `.remap`-suffix-stripping
+approach, so every directory-scanning resource loader in the
+repository now handles both forms identically — closing the loop on
+"search the entire repository for similar patterns" rather than
+leaving one instance of the same bug class unaddressed by happenstance.
+
+### Windows export rcedit/Wine noise (cosmetic, fixed via a one-line export-preset change)
+
+Re-exporting the Windows build in this verification pass surfaced a
+new, unrelated console warning not present in the earlier RC Fix Pass
+export: `rcedit (...): it looks like wine32 is missing` followed by
+dozens of the same Wine/gVisor `segv_handler`/`stack overflow` traces
+already reported for Windows runtime execution. Root cause: this
+sandbox session had `wine64` installed (for the earlier, separate
+attempt to execute the Windows `.exe` directly) between the RC Fix
+Pass's export and this one; Godot's Windows export pipeline detects
+Wine's presence and automatically attempts to invoke `rcedit` through
+it to embed the `.exe`'s Windows file-icon/version-info metadata
+(`application/modify_resources` in `export_presets.cfg`) — a
+cross-compilation convenience when exporting to Windows from a Linux
+host. `rcedit` itself needs 32-bit Wine support (`wine32`), which was
+never installed, so the attempt immediately fails, hitting the exact
+same Wine/gVisor incompatibility already reported. **This is not a
+project defect**: the export still completed successfully every time
+(exit 0, correct `file`-reported type, consistent `.pck`-embedded
+size) — `modify_resources` only affects the `.exe`'s Windows Explorer
+file icon/version metadata, never the game's actual resources,
+scripts, or runtime behavior (the game's own in-game icon is a
+separate, unaffected `project.godot config/icon` setting). On a real
+developer's machine (native Windows export, or a Linux host with a
+complete, non-gVisor Wine install), this step either doesn't need
+Wine at all or would simply succeed. Fixed by setting
+`application/modify_resources=false` in the committed
+`export_presets.cfg` — this avoids a step that cannot functionally
+succeed in *this specific sandbox's* partial Wine setup, producing a
+completely clean, warning-free export log, without touching any
+setting that affects the actual shipped game.
+
+### Full end-to-end vertical-slice smoke test against the rebuilt exported binary
+
+Re-ran the complete scripted playthrough against a freshly rebuilt
+Linux export (same source as the Windows export, both rebuilt after
+the fixes above): Content Warning → Main Menu → Campaign Select (4
+cards rendered) → Difficulty Select → Story Panel → real gameplay
+(real MC + 3 real rival MCs + starting vehicle present) → a core
+player action (move order, confirmed `State.MOVING`) → a real rival
+MC's combat death → flee/surrender/rogue fired for real → the
+player's own MC death → DEFEAT with a full campaign summary → clean
+exit (code 0). Screenshotted at every step. This is the same flow as
+the RC Fix Pass's own verification, re-run end-to-end once more after
+this pass's additional fixes, confirming nothing regressed.

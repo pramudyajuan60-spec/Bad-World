@@ -36,8 +36,20 @@ func _load_campaigns() -> Dictionary:
 	dir.list_dir_begin()
 	var f := dir.get_next()
 	while f != "":
-		if f.ends_with(".tres"):
-			var c: CampaignData = load("res://data/campaigns/" + f)
+		# Release Candidate Fix Pass: same ".remap"-suffix handling as
+		# campaign_database.gd/campaign_economy.gd/
+		# validate_asset_manifest.gd. This script is dev-only (always
+		# invoked directly via `--script`, never auto-run inside a
+		# shipped export's own boot path the way the CampaignDatabase/
+		# CampaignEconomy autoloads are), so it was never actually
+		# exposed to the real bug — fixed here purely for consistency
+		# so every directory-scanning resource loader in the repo
+		# handles both forms identically.
+		var real_name: String = f
+		if real_name.ends_with(".remap"):
+			real_name = real_name.substr(0, real_name.length() - ".remap".length())
+		if real_name.ends_with(".tres"):
+			var c: CampaignData = load("res://data/campaigns/" + real_name)
 			out[String(c.id)] = c
 		f = dir.get_next()
 	dir.list_dir_end()
@@ -70,7 +82,10 @@ func _test_difficulties_load() -> void:
 	dir.list_dir_begin()
 	var f := dir.get_next()
 	while f != "":
-		if f.ends_with(".tres"):
+		var real_name: String = f
+		if real_name.ends_with(".remap"):
+			real_name = real_name.substr(0, real_name.length() - ".remap".length())
+		if real_name.ends_with(".tres"):
 			count += 1
 		f = dir.get_next()
 	dir.list_dir_end()
