@@ -42,8 +42,11 @@ var _combat_log: Node = null
 
 @onready var nav_agent: NavigationAgent2D = $NavAgent
 @onready var body_poly: Polygon2D = $Body
+@onready var veh_sprite: Sprite2D = $VehSprite
 @onready var selection_ring: Node2D = $SelectionRing
 @onready var health_bar: Node2D = $HealthBar
+
+const VEH_SPRITE_TARGET_WIDTH := 72.0
 
 
 func _ready() -> void:
@@ -69,6 +72,47 @@ func _setup_body_visual() -> void:
 	])
 	body_poly.polygon = pts
 	body_poly.color = Color(0.2, 0.55, 0.25) if faction_side == &"player" else Color(0.6, 0.25, 0.1)
+	_try_load_real_sprite()
+
+
+## Real faction vehicle photo (see docs/TECH_DECISIONS.md "Vehicle
+## sprite integration"). Only resolvable for the player's own vehicle,
+## since that is the only side with a concrete FactionData in this
+## single-player build (see docs/PLACEHOLDER_REGISTER.md
+## PLACEHOLDER_rival_faction_combat_identity) -- enemy-side vehicles,
+## if any ever spawn, keep the original Polygon2D placeholder.
+func _try_load_real_sprite() -> void:
+	if faction_side != &"player":
+		return
+	# String-path autoload lookup, not the bare GameState/CampaignDatabase
+	# global identifier: vehicle.gd is preload()-ed at the top of several
+	# existing MVP5 tests (test_mvp5_arena.gd, test_mvp5_strategic_ai.gd)
+	# that extend SceneTree directly, which compiles this script before
+	# that harness's own autoload singletons are registered as known
+	# global identifiers to the GDScript analyzer -- the bare-identifier
+	# form only works for scripts that are only ever loaded through a
+	# real scene transition (see unit.gd's own get_node_or_null(
+	# "/root/CombatLog") for the same established pattern in this
+	# codebase).
+	var game_state := get_node_or_null("/root/GameState")
+	var campaign_database := get_node_or_null("/root/CampaignDatabase")
+	if game_state == null or campaign_database == null:
+		return
+	var campaign = campaign_database.get_campaign(game_state.current_campaign_id)
+	if campaign == null or campaign.faction == null:
+		return
+	var tex_path: String = campaign.faction.vehicle_texture_path
+	if tex_path == "" or not ResourceLoader.exists(tex_path):
+		return
+	var tex: Texture2D = load(tex_path)
+	if tex == null:
+		return
+	body_poly.visible = false
+	veh_sprite.visible = true
+	veh_sprite.texture = tex
+	var w: float = float(tex.get_width())
+	if w > 0.0:
+		veh_sprite.scale = Vector2.ONE * (VEH_SPRITE_TARGET_WIDTH / w)
 
 
 func set_selected(value: bool) -> void:
@@ -201,6 +245,8 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 	if _turret_weapon != null and seats.size() > 0:
 		_process_turret(delta)
+	if veh_sprite.visible and absf(velocity.x) > 2.0:
+		veh_sprite.flip_h = velocity.x < 0.0
 
 
 func _move_towards_next_path_point() -> void:

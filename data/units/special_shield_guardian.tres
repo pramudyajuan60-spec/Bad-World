@@ -15,3 +15,5 @@ base_accuracy = 0.62
 move_speed = 2.6
 recruit_price = 5000
 salary = 350
+world_sprite_path = "res://Assets/Generated/Characters/nasion/special_1/idle.png"
+world_sprite_moving_path = "res://Assets/Generated/Characters/nasion/special_1/moving.png"

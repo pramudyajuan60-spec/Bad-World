@@ -19,3 +19,4 @@ strengths = Array[String](["Can recruit downed enemy regulars (Master Manipulato
 weaknesses = Array[String](["No factory value/speed bonus (baseline 1.0x/1.0x)", "No unique squad-wide combat multiplier like Zie's Triad Synergy"])
 economy_rating_stars = 3
 economy_rating_label = "Average (baseline factory value and speed)"
+vehicle_texture_path = "res://Assets/Campaign/Bellarosa Syndicate/Vehicle/Bellarosa Syndicate Vehicle.jpg"

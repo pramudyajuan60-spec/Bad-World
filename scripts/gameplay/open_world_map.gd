@@ -34,6 +34,26 @@ const KNOWLEDGE_SCRIPT := preload("res://scripts/ai/faction_knowledge.gd")
 const AI_DEBUG_OVERLAY_SCENE := preload("res://scenes/ui/AiDebugOverlay.tscn")
 const TUTORIAL_CONTROLLER_SCRIPT := preload("res://scripts/gameplay/tutorial_controller.gd")
 
+## Real building/world art (Phase 5/6/8 of the asset-integration pass --
+## see docs/TECH_DECISIONS.md "Building and world sprite integration").
+## Buildings previously had *zero* visual (not even a placeholder box --
+## only their Area2D collision + a floating text Label), discovered
+## while wiring this in. Garage/GunShop art is reused for Armory/
+## Factory respectively since no dedicated art exists for either --
+## documented fallback, not a claim of unique art (see
+## docs/PLACEHOLDER_REGISTER.md).
+const WORLD_BG_PATH := "res://Assets/Game Maps/World.png"
+const BANK_TEX_PATH := "res://Assets/Game Maps/Bank.png"
+const GARAGE_TEX_PATH := "res://Assets/Game Maps/Garage.png"
+const GUN_SHOP_TEX_PATH := "res://Assets/Game Maps/Gun Shop.png"
+const RECRUITMENT_TEX_PATH := "res://Assets/Game Maps/Recruitment Place.png"
+const DEALER_TEX_PATHS := [
+	"res://Assets/Game Maps/Drug Dealer 1.png",
+	"res://Assets/Game Maps/Drug Dealer 2.png",
+	"res://Assets/Game Maps/Drug Dealer 3.png",
+	"res://Assets/Game Maps/Drug Dealer 3.png",
+]
+
 ## Open world bounds, large enough to fit 4 region HQs + Central City
 ## with real travel distance between them.
 const MAP_BOUNDS := Rect2(-4000, -3000, 8000, 6000)
@@ -100,6 +120,7 @@ var dealers: Array = []
 var _topbar_label: Label
 var _objective_label: Label
 var _minimap: Control
+var _minimap_bg_tex: Texture2D = null
 var _alert_panel: Control
 var _alert_label: Label
 var _combat_log: Node = null
@@ -223,6 +244,7 @@ func _ready() -> void:
 
 	_build_navigation()
 	_build_obstacles()
+	_build_world_background()
 	camera.bounds = MAP_BOUNDS
 
 	economy.set_money(current_campaign.starting_money)
@@ -442,6 +464,45 @@ func _build_obstacles() -> void:
 		obstacles_root.add_child(body)
 
 
+func _build_world_background() -> void:
+	if not ResourceLoader.exists(WORLD_BG_PATH):
+		return
+	var tex: Texture2D = load(WORLD_BG_PATH)
+	if tex == null:
+		return
+	var bg := Sprite2D.new()
+	bg.name = "WorldBackground"
+	bg.texture = tex
+	bg.centered = false
+	bg.position = MAP_BOUNDS.position
+	bg.z_index = -100
+	bg.modulate = Color(0.55, 0.55, 0.6, 1.0) # dimmed so units/buildings stay readable on top
+	var tex_size: Vector2 = tex.get_size()
+	if tex_size.x > 0.0 and tex_size.y > 0.0:
+		bg.scale = Vector2(MAP_BOUNDS.size.x / tex_size.x, MAP_BOUNDS.size.y / tex_size.y)
+	add_child(bg)
+
+
+## Attaches a real-art Sprite2D to a building Area2D, scaled so its
+## wider dimension matches target_size. Centered on the Area2D's own
+## origin, same as the circle collision shape it sits beside.
+func _attach_building_sprite(area: Area2D, texture_path: String, target_size: float, tint: Color = Color(1, 1, 1, 1)) -> void:
+	if not ResourceLoader.exists(texture_path):
+		return
+	var tex: Texture2D = load(texture_path)
+	if tex == null:
+		return
+	var sprite := Sprite2D.new()
+	sprite.texture = tex
+	sprite.modulate = tint
+	var tex_size: Vector2 = tex.get_size()
+	var largest: float = maxf(tex_size.x, tex_size.y)
+	if largest > 0.0:
+		sprite.scale = Vector2.ONE * (target_size / largest)
+	area.add_child(sprite)
+	sprite.z_index = -1 # stay behind the building's own Label/collision debug
+
+
 func _build_buildings() -> void:
 	# Region HQ markers: MVP4 activates all 4 campaigns, but a given
 	# playthrough is still single-player/single-faction (Prompt Dasar:
@@ -458,7 +519,7 @@ func _build_buildings() -> void:
 	for cid in hq_labels.keys():
 		var info: Array = hq_labels[cid]
 		var label: String = info[0] if cid == current_campaign.id else "%s (PLACEHOLDER)" % info[0]
-		_add_region_marker(label, info[1], info[2])
+		_add_region_marker(label, info[1], info[2], cid == current_campaign.id)
 	_add_region_marker("Central City", CENTRAL_CITY, Color(0.5, 0.5, 0.5))
 
 	bank = Area2D.new()
@@ -467,6 +528,7 @@ func _build_buildings() -> void:
 	bank.economy = economy
 	_attach_circle_shape(bank, 90.0)
 	_attach_label(bank, "Bank")
+	_attach_building_sprite(bank, BANK_TEX_PATH, 170.0)
 	buildings_root.add_child(bank)
 
 	garage = Area2D.new()
@@ -475,6 +537,7 @@ func _build_buildings() -> void:
 	garage.economy = economy
 	_attach_circle_shape(garage, 90.0)
 	_attach_label(garage, "Garage")
+	_attach_building_sprite(garage, GARAGE_TEX_PATH, 170.0)
 	buildings_root.add_child(garage)
 
 	recruitment_building = Area2D.new()
@@ -483,6 +546,7 @@ func _build_buildings() -> void:
 	recruitment_building.position = RECRUITMENT_POS
 	_attach_circle_shape(recruitment_building, 90.0)
 	_attach_label(recruitment_building, "Recruitment")
+	_attach_building_sprite(recruitment_building, RECRUITMENT_TEX_PATH, 170.0)
 	buildings_root.add_child(recruitment_building)
 
 	if current_faction.uses_armory_instead_of_gun_shop:
@@ -493,6 +557,7 @@ func _build_buildings() -> void:
 		armory_building.position = GUN_SHOP_POS
 		_attach_circle_shape(armory_building, 90.0)
 		_attach_label(armory_building, "DEA Armory")
+		_attach_building_sprite(armory_building, GUN_SHOP_TEX_PATH, 170.0, Color(0.75, 0.82, 1.0, 1.0))
 		buildings_root.add_child(armory_building)
 	else:
 		gun_shop_building = Area2D.new()
@@ -501,6 +566,7 @@ func _build_buildings() -> void:
 		gun_shop_building.position = GUN_SHOP_POS
 		_attach_circle_shape(gun_shop_building, 90.0)
 		_attach_label(gun_shop_building, "Gun Shop")
+		_attach_building_sprite(gun_shop_building, GUN_SHOP_TEX_PATH, 170.0)
 		buildings_root.add_child(gun_shop_building)
 
 	factory = Area2D.new()
@@ -512,6 +578,7 @@ func _build_buildings() -> void:
 	factory.position = player_hq_position + Vector2(300, 200)
 	_attach_circle_shape(factory, 80.0)
 	_attach_label(factory, "%s Factory" % current_faction.display_name)
+	_attach_building_sprite(factory, GARAGE_TEX_PATH, 160.0, Color(0.95, 0.75, 0.55, 1.0))
 	buildings_root.add_child(factory)
 
 	for i in range(4):
@@ -523,11 +590,12 @@ func _build_buildings() -> void:
 		dealer.is_placeholder = is_ph
 		_attach_circle_shape(dealer, 70.0)
 		_attach_label(dealer, dealer.dealer_label)
+		_attach_building_sprite(dealer, DEALER_TEX_PATHS[i], 130.0)
 		buildings_root.add_child(dealer)
 		dealers.append(dealer)
 
 
-func _add_region_marker(label_text: String, pos: Vector2, color: Color) -> void:
+func _add_region_marker(label_text: String, pos: Vector2, color: Color, is_active_hq: bool = false) -> void:
 	var marker := Node2D.new()
 	marker.position = pos
 	var visual := Polygon2D.new()
@@ -535,6 +603,22 @@ func _add_region_marker(label_text: String, pos: Vector2, color: Color) -> void:
 	visual.polygon = PackedVector2Array([Vector2(-half, -half), Vector2(half, -half), Vector2(half, half), Vector2(-half, half)])
 	visual.color = Color(color.r, color.g, color.b, 0.12)
 	marker.add_child(visual)
+	# The player's own (non-placeholder) HQ gets real building art on top
+	# of the landmark box; the other 3 rival HQs stay plain boxes since
+	# they remain non-functional placeholders this session (see
+	# docs/PLACEHOLDER_REGISTER.md PLACEHOLDER_rival_faction_combat_identity)
+	# -- giving them real art too would visually overstate what's actually
+	# functional there.
+	if is_active_hq and ResourceLoader.exists(RECRUITMENT_TEX_PATH):
+		var hq_tex: Texture2D = load(RECRUITMENT_TEX_PATH)
+		if hq_tex != null:
+			var hq_sprite := Sprite2D.new()
+			hq_sprite.texture = hq_tex
+			hq_sprite.modulate = Color(color.r * 1.3 + 0.3, color.g * 1.3 + 0.3, color.b * 1.3 + 0.3, 1.0)
+			var largest: float = maxf(hq_tex.get_size().x, hq_tex.get_size().y)
+			if largest > 0.0:
+				hq_sprite.scale = Vector2.ONE * (300.0 / largest)
+			marker.add_child(hq_sprite)
 	var label := Label.new()
 	label.text = label_text
 	label.position = Vector2(-half + 10, -half + 6)
@@ -840,7 +924,13 @@ func _draw_minimap() -> void:
 	if not _minimap:
 		return
 	var size: Vector2 = _minimap.size
-	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.05, 0.08, 0.85))
+	if _minimap_bg_tex == null and ResourceLoader.exists(WORLD_BG_PATH):
+		_minimap_bg_tex = load(WORLD_BG_PATH)
+	if _minimap_bg_tex != null:
+		_minimap.draw_texture_rect(_minimap_bg_tex, Rect2(Vector2.ZERO, size), false, Color(0.4, 0.4, 0.45, 1.0))
+		_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.05, 0.08, 0.35))
+	else:
+		_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.05, 0.08, 0.85))
 	var to_map := func(world_pos: Vector2) -> Vector2:
 		var t: Vector2 = (world_pos - MAP_BOUNDS.position) / MAP_BOUNDS.size
 		return t * size

@@ -160,3 +160,7 @@ bw_group_9={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[gui]
+
+theme/custom="res://resources/ui/bad_world_theme.tres"

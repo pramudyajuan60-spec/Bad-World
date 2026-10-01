@@ -19,3 +19,4 @@ strengths = Array[String](["Starts with an Armored SUV", "Triad Synergy: all 3 S
 weaknesses = Array[String](["Factory sale value -5% (0.95x)", "Cannot recruit downed enemy regulars"])
 economy_rating_stars = 2
 economy_rating_label = "Below average (factory value -5%)"
+vehicle_texture_path = "res://Assets/Campaign/Valtieri Cartel/Vehicle/Valtieri Vehicle.jpg"

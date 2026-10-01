@@ -810,3 +810,147 @@ player's own MC death → DEFEAT with a full campaign summary → clean
 exit (code 0). Screenshotted at every step. This is the same flow as
 the RC Fix Pass's own verification, re-run end-to-end once more after
 this pass's additional fixes, confirming nothing regressed.
+
+## Asset Integration Pass: real art replacing placeholder visuals
+
+A follow-up request asked to transform MVP0-7+RC-fix from placeholder
+visuals (procedural circles, invisible buildings, flat colored boxes)
+into a version using the real art already committed under `Assets/`,
+end-to-end in the actual playable game, not a mockup. Full before/
+after evidence (screenshots) is in the PR description. Summary of
+what changed, why, and the limitations of the source art itself:
+
+### Spritesheet structure: discrete grid poses, not animation frames
+
+`Prompt SpritSheet/*.txt` is the original AI-image-generation prompt
+used to produce `Assets/Campaign/*/Spritsheet/*/*.png` -- it asked for
+a full frame-by-frame animation package per character (IDLE 4 frames
+x4 directions, WALK 8x4, RUN 8x4, etc. -- over a dozen states). The
+actual delivered PNGs never matched that ask: each is a fixed
+1536x1024 canvas arranged as a 4-column x 2-row grid of **discrete,
+individually-posed illustrations** (confirmed by both visual
+inspection and alpha-channel bounding-box analysis -- most sheets
+populate only 6 of the 8 cells, each with ~17-26% alpha coverage and
+real transparent padding, i.e. real separate poses, not animation
+sub-frames of one pose). Cell [0][0] is consistently the clearest
+standing/idle-like pose across every character sampled (Bellarosa/
+Vartieri/Nasion/DEA, every tier); cell [0][1], when populated (every
+character has it), is consistently a distinct second pose usable as
+a "moving" variant.
+
+Given this, building the originally-prompted multi-frame directional
+animation set is not possible without inventing frames that were
+never generated -- which the task's own instructions explicitly
+forbid ("Do not fabricate fake animation frames", "do not invent
+missing frames when real frames exist" implies not inventing when
+they *don't*). The honest, real-art-only interpretation implemented:
+each unit gets exactly 2 real poses ("idle", "moving", from cells
+[0][0]/[0][1]), swapped on actual movement state, mirrored left/right
+by actual horizontal velocity sign (mirroring real art, not inventing
+new pixels -- explicitly permitted by the task when it doesn't break
+weapon placement; spot-checked across factions/tiers, no obviously
+broken asymmetry observed). This is not full 4-direction (SE/SW/NE/
+NW) facing or a walking leg-cycle -- the source art's single camera
+angle per character doesn't support either.
+
+### Reproducible extraction pipeline
+
+`tools/asset_pipeline/extract_character_sprites.py`: for each of the
+48 characters across all 4 factions (every B1/B2/B3/Special/MC tier
+that has a Spritsheet folder -- the unused "Dog" sheet under DEA is
+skipped, since no `UnitData` references it), crops cell [0][0] and
+[0][1] of `PERGERAKAN DAN KONDISI KARAKTER.png` to their real
+alpha-threshold content bounding box plus a small uniform margin (no
+resize, no blur, no recoloring -- pixels are untouched), and writes
+them to `Assets/Generated/Characters/<faction_slug>/<char_slug>/
+{idle,moving}.png`. Original source art under `Assets/Campaign/` is
+never modified or overwritten. Re-running the script regenerates the
+same output deterministically. QA: a contact-sheet grid of extracted
+poses across all 4 factions/5 tiers was visually reviewed before
+wiring into gameplay -- every sampled pose showed a crisp, undeformed,
+correctly-cropped character with visible feet/head/weapon, confirming
+the automated crop is reliable at this margin setting.
+
+### Data-driven wiring (no hardcoded per-character logic)
+
+Added `UnitData.world_sprite_path`/`world_sprite_moving_path` (empty
+string = no art yet, falls back to the original Polygon2D placeholder
+circle -- graceful degradation, not a hard requirement) and populated
+all 27 `data/units/*.tres`. Added `FactionData.vehicle_texture_path`
+(only one vehicle reference photo exists per faction, not one per
+`VehicleClass`, so every vehicle class a faction drives reuses it) and
+populated all 4 `data/factions/*.tres`. `unit.gd`/`vehicle.gd` read
+these at `_ready()` and swap in a real `Sprite2D`; which specific
+pixel-art file renders for a given spawned unit/vehicle is entirely a
+function of which `UnitData`/`FactionData` resource it was assigned,
+identical to how tier/stats already worked -- no new per-faction
+match statements were added anywhere.
+
+### Buildings were not placeholder boxes -- they had *zero* visual
+
+Discovered while wiring this in: `_build_buildings()`'s Bank/Garage/
+Gun Shop/Armory/Recruitment/Factory/Drug-Dealer Area2Ds only ever got
+a collision shape + an empty unused `Node2D` + a floating text
+`Label` -- genuinely no visual at all (not even a colored rect), so
+every building was invisible in every prior MVP/RC build; the
+gray boxes visible in old screenshots near HQs were unrelated nearby
+cover-object `ColorRect`s and the starting vehicle's own Polygon2D,
+not the buildings themselves. Fixed via a new `_attach_building_sprite()`
+helper that attaches a real `Assets/Game Maps/*.png` photo, scaled to
+a reasonable building footprint, to every building Area2D. `Garage.png`
+is reused (tinted) for both the literal Garage *and* the Factory (no
+dedicated Factory art exists); `Gun Shop.png` is reused (tinted) for
+Nabil's Armory (no dedicated Armory art exists); Drug Dealer 4 (no
+unique art ever existed for it, confirmed) reuses Drug Dealer 3's
+photo -- all three are documented fallbacks, not claims of unique art,
+per docs/PLACEHOLDER_REGISTER.md policy. The world itself now has a
+dimmed `World.png` backdrop (`_build_world_background()`, z_index
+-100) and the minimap draws the same texture as its background before
+its existing live dot overlay.
+
+### Found-and-fixed regression: autoload-unsafe bare global identifier
+
+Wiring `vehicle.gd`'s new sprite resolution initially used the bare
+`GameState.current_campaign_id` / `CampaignDatabase.get_campaign(...)`
+global-identifier form already used safely elsewhere in this codebase
+(e.g. `open_world_map.gd`). This broke `test_mvp5_arena.gd` and
+`test_mvp5_strategic_ai.gd` with a GDScript *compile* error
+("Identifier not found: GameState") -- both tests `preload()`
+`Vehicle.tscn` at the top of an `extends SceneTree` test harness,
+which compiles `vehicle.gd` before that harness's own autoload
+singleton table is necessarily populated, unlike a real scene
+transition (where autoloads are already live by the time any gameplay
+scene's scripts compile). Fixed by switching to the same
+`get_node_or_null("/root/GameState")` string-path lookup `unit.gd`
+already uses for `CombatLog`/`BattlefieldEvents` -- safe regardless of
+compile order, gracefully returns null (handled) if unavailable. This
+was caught by running the full 30-test suite after the change, not
+assumed safe by analogy -- a concrete instance of this project's own
+"don't claim untested code works" rule catching a real bug before
+ship.
+
+### Godot import gotcha: new PNGs need one editor pass before `load()` works
+
+The 96 new PNGs under `Assets/Generated/Characters/` could not be
+`load()`-ed or pass `ResourceLoader.exists()` in a plain
+`--headless --script` run immediately after being written to disk --
+Godot requires a project filesystem scan (normally done by opening
+the editor) to generate each file's `.import` sidecar and register it
+in the import database before `ResourceLoader` can resolve it; a bare
+`--headless --script` game-script run never triggers that scan. Fixed
+by running `godot4 --headless --editor --quit-after 60 --path .` once
+(see "How to run from source" below) before testing/exporting --
+this generated all 96 `.import` sidecars, which **are committed to
+the repository** (same convention as every other tracked `*.import`
+file under `Assets/`, per this project's `.gitignore`, which excludes
+Godot's internal `.import/` cache directory but not per-file `.import`
+sidecars) so a fresh clone/export never needs to repeat this step.
+
+### UI theme
+
+Added `resources/ui/bad_world_theme.tres` (a dark, red-accented
+`Theme` matching BAD WORLD's crime-game identity: near-black panels,
+deep-red borders/buttons) wired as the project's default theme
+(`project.godot` `[gui] theme/custom`), so it cascades to every
+existing `Control`-based UI scene with zero per-scene edits -- no
+existing UI logic, layout, or functionality was touched.

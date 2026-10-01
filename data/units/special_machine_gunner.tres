@@ -15,3 +15,5 @@ base_accuracy = 0.65
 move_speed = 2.4
 recruit_price = 6500
 salary = 450
+world_sprite_path = "res://Assets/Generated/Characters/vartieri/special_3/idle.png"
+world_sprite_moving_path = "res://Assets/Generated/Characters/vartieri/special_3/moving.png"

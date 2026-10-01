@@ -45,3 +45,8 @@ extends Resource
 ## not a new balance claim.
 @export_range(1, 5) var economy_rating_stars: int = 3
 @export var economy_rating_label: String = ""
+## Real faction vehicle photo (see Assets/Campaign/<asset_folder>/Vehicle/).
+## Only one reference image exists per faction (not one per VehicleClass),
+## so every vehicle class this faction drives/buys reuses it -- see
+## docs/TECH_DECISIONS.md "Vehicle sprite integration".
+@export_file("*.png", "*.jpg", "*.jpeg") var vehicle_texture_path: String = ""

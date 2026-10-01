@@ -19,3 +19,4 @@ strengths = Array[String](["Starts at Factory Level 2 instead of Level 1", "+25%
 weaknesses = Array[String](["Weakest Main Character in a direct 1-on-1 duel"])
 economy_rating_stars = 5
 economy_rating_label = "Fastest (Level 2 start, +25% value, +10% speed)"
+vehicle_texture_path = "res://Assets/Campaign/Nasion Familia/Vehicle/Nasion Familia Vehicle.jpg"
