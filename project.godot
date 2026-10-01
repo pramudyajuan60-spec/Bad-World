@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 CampaignDatabase="*res://scripts/autoload/campaign_database.gd"
 GameState="*res://scripts/autoload/game_state.gd"
 SaveService="*res://scripts/autoload/save_service.gd"
+CombatLog="*res://scripts/autoload/combat_log.gd"
 
 [display]
 

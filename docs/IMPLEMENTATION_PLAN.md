@@ -9,7 +9,7 @@ next begins (base rule 12).
 |---|---|---|
 | 0 | Repository Audit and Godot Bootstrap | **Done this session** — see report in the PR/handoff message. |
 | 1 | Juan Bellarosa Core RTS Vertical Slice | **Done** — see "MVP 1 delivered scope" below. |
-| 2 | Combat and Unit Management | Not started |
+| 2 | Combat and Unit Management | **Done** — see "MVP 2 delivered scope" below. |
 | 3 | Open-World Economy and Vehicle Loop | Not started |
 | 4 | Four Asymmetric Campaigns | Not started |
 | 5 | Intelligent AI and Diplomacy | Not started |
@@ -77,10 +77,62 @@ Known simplifications, deferred to their stated MVP:
 - No AI beyond "dummy enemy fires back if approached" (MVP 5).
 - No tutorial, key rebinding, audio, or >1 save slot (MVP 6).
 
-## Next up: MVP 2 (not started)
+## MVP 2 delivered scope
 
-Per `Part 4.txt`: full weapon-data-driven combat, cover, suppression,
-downed/revive/execution, recruitment building, Gun Shop, manual
-per-unit inventory, unit inspect panel, payroll/morale, safe zones,
-enemy-surrender recruitment for Juan. Substantially larger than MVP 1;
-treat as its own effort.
+Full weapon-data-driven combat replacing MVP1's flat accuracy/damage:
+
+- 10 weapon resources (`data/weapons/*.tres`): Knife, Pistol, SMG,
+  Shotgun, Assault Rifle, Sniper, LMG, RPG, Grenade, Tactical Vest —
+  each with damage, rate of fire, reload time, range, magazine/reserve,
+  hitscan-vs-projectile, and (for explosives) blast radius.
+- `BwUnit` combat: real ammo consumption, automatic reload from
+  reserve, fallback to an equipped melee secondary once a primary is
+  fully dry (never "fake" infinite fire), and a line-of-sight raycast
+  that blocks fire through obstacles.
+- Defend/Cover Mode (`D`): unit paths to the nearest obstacle and takes
+  reduced damage only from the direction the cover actually blocks.
+- Suppression: taking fire accumulates a meter that degrades accuracy
+  and, past a threshold, triggers a simple retreat.
+- Downed/revive/execution: lethal damage downs a unit (30s regular /
+  45s Special / 90s Main Character) instead of an instant kill; allies
+  can revive (partial HP), enemies can execute via the explicit 6s
+  channel (cancelable by taking damage mid-channel).
+- Recruitment building (HUD panel): B1/B2/B3 recruitable with real
+  price/salary/timer and roster-cap enforcement; Special shown locked.
+- Gun Shop (HUD panel) + Inspect panel (HUD panel): weapons are bought
+  into a shared unassigned pool and must be manually assigned per unit
+  and per slot (primary/secondary/grenade/armor) — never auto-equipped.
+- Payroll: a 120s timer pays all owned units' salaries from the shared
+  money pool; a missed cycle applies the accuracy/speed/morale penalty
+  from Prompt Dasar and recovers gradually once paid.
+- Safe zone: Bank + Recruitment each project an 18m no-damage radius
+  (blocks attacks, explosions, and executions uniformly, checked in
+  `BwUnit.take_damage`).
+- Juan can recruit a downed regular enemy via a channeled action (50%
+  of B1's price, returns at 50% HP); Special/MC are never recruitable
+  (enforced via `is_recruitable_tier`).
+- Limited friendly fire from explosives (grenade/RPG): allies inside
+  the blast take reduced (50%) damage, and a warning is logged.
+
+9 headless test suites now cover MVP0–2 (see docs/TEST_PLAN.md), all
+passing, plus a manual Xvfb visual pass confirming the new HUD/panels
+render and function correctly (screenshots shared in the PR, not
+committed to the repo).
+
+Known simplifications, deferred to their stated MVP:
+- No vehicles/factories/cargo economy yet (MVP3).
+- Only Campaign Juan playable; other campaigns' rosters/specials wait
+  for MVP4.
+- No AI beyond "dummy enemy fires back if approached" (MVP5).
+- Building interaction is a HUD button shortcut, not in-world walk-up
+  (deferred until MVP3 places real buildings in the open world).
+- Grenade/RPG have no visual projectile flight (a timed delay stands in
+  for travel time) — see docs/TECH_DECISIONS.md.
+
+## Next up: MVP 3 (not started)
+
+Per `Part 5.txt`: open-world map with all four HQs + Central City,
+cargo production/factory upgrades, drug dealer demand curves, carried
+cash vs. bank balance, vehicles (4 classes, enter/exit, seats, moving
+turret accuracy penalty), Heat Meter and DEA response. Substantially
+larger than MVP 2; treat as its own effort.

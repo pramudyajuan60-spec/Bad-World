@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/bellarosa_test_map.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/gameplay/box_select_overlay.gd" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/gameplay/command_controller.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/gameplay/selection_hud.gd" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/gameplay/PauseMenu.tscn" id="7"]
+[ext_resource type="Script" path="res://scripts/economy/campaign_economy.gd" id="8"]
 
 [node name="BellarosaTestMap" type="Node2D"]
 script = ExtResource("1")
@@ -33,6 +34,9 @@ script = ExtResource("4")
 
 [node name="CommandController" type="Node2D" parent="."]
 script = ExtResource("5")
+
+[node name="CampaignEconomy" type="Node" parent="."]
+script = ExtResource("8")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 

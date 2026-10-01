@@ -161,3 +161,90 @@ inventory, ammo, line-of-sight, or cover — just enough to satisfy MVP
 diserang" acceptance criteria. The full weapon-data-driven system
 (`WeaponData`, ammo, line-of-sight, cover damage reduction) is explicitly
 MVP 2 scope ("COMBAT DAN COVER") and intentionally not built early.
+
+## MVP 2 additions
+
+### Autoload references in headless test scripts — a real, reproducible bug
+
+**Bare autoload identifiers do not compile inside a `--headless
+--script res://....gd` (custom `SceneTree`/`MainLoop`) invocation.**
+This is not flaky/timing-dependent — it is 100% reproducible regardless
+of how much the class/script cache has been "warmed" beforehand. A
+script that references an autoload singleton by its bare project.godot
+name (e.g. `CombatLog.log_event(...)`) fails to *compile* with
+`Identifier not found: CombatLog` whenever Godot is invoked via
+`--script <path>` instead of its normal main-scene bootstrap
+(`run/main_scene` in project.godot). When a dependency script fails to
+compile this way, `PackedScene.instantiate()` on a scene using that
+script silently returns a **bare engine-base-class node with no script
+attached** (e.g. a plain `CharacterBody2D` instead of a `BwUnit`) rather
+than erroring loudly, which then surfaces later as a confusing
+`Trying to assign value of type 'CharacterBody2D' to a variable of type
+'unit.gd'` or `Nonexistent function '...' in base 'Nil'` far from the
+real cause.
+
+This was first hit in MVP1 (test scripts referencing `SaveService`) and
+the fix at the time was scoped to the test files only. MVP2 hit it
+again, this time inside **production gameplay code** (`unit.gd`,
+`campaign_economy.gd`) referencing the new `CombatLog` autoload — which
+silently broke `BwUnit` for every headless test until diagnosed.
+
+**Durable fix applied everywhere an autoload is used from a script that
+needs to run headlessly:** look the singleton up at runtime via
+`get_node_or_null("/root/<AutoloadName>")` once in `_ready()`, cache it
+in a plain `var`, and route all calls through a small null-safe helper
+(e.g. `_log_event(text)`) instead of ever writing the bare identifier.
+This works identically in normal play (real binary, real main scene)
+and in every `--headless --script` test, and costs nothing at runtime.
+Any *new* autoload added to this project should follow the same
+pattern from the start rather than rediscovering this bug a third time.
+
+### Cover implementation: directional damage reduction, not navmesh cutouts
+
+Defend Mode marks a unit `in_cover = true` with a `cover_direction`
+(the outward normal from the covering obstacle to the unit). On
+`take_damage(amount, attacker)`, if the attacker is roughly opposite
+that normal (`cover_direction.dot(attacker_dir) < -0.3`), damage is
+reduced 35%; otherwise it's full. This is deliberately a damage-formula
+check, not a physical shield/hitbox — simplest way to make "cover only
+protects from the right direction" both true and unit-testable without
+needing per-obstacle collision-shape raycasting against a firing arc.
+
+### Line-of-sight via a dedicated obstacle collision layer
+
+Units live on collision layer 1 (mask 1|2, so they physically collide
+with both each other and obstacles). Obstacles live on a dedicated
+layer 2 with an empty mask. `BwUnit._has_line_of_sight()` raycasts with
+`collision_mask = 2` so it only ever hits obstacles, never other units
+— avoiding false "blocked" results just because an ally is standing
+between the shooter and its target.
+
+### Projectile weapons are a timed delay, not a simulated flight
+
+`WeaponData.is_hitscan = false` (grenades, RPG) resolves as: compute
+`travel_time = distance / projectile_speed_px`, then apply the AoE
+explosion after that delay via `get_tree().create_timer(...)`. There is
+no moving projectile node/visual. This still makes hitscan vs.
+projectile a real, testable behavioral difference (a shot lands
+instantly; an RPG/grenade lands after a beat) without needing
+projectile physics, arcs, or impact-detection geometry — deferred to a
+later MVP if a visible flight becomes a real requirement.
+
+### Grenade-throwing is a hotkey-armed action, not full context-menu UX
+
+`G` + right-click throws the equipped grenade at the clicked ground
+position (clamped to the weapon's range), mirroring the existing
+`A` + right-click attack-move pattern. A richer targeting reticle/arc
+preview is MVP6 UI polish; the underlying mechanic (consume one
+charge, apply AoE with friendly-fire rules) is fully implemented and
+tested now.
+
+### Recruitment/Gun Shop/Inspect are HUD buttons, not in-world buildings
+
+This test map has no real Recruitment/Gun Shop/Bank building placed in
+the world (those come from `Assets/Game Maps/` once MVP3 builds the
+actual open world). Rather than fake a building with a clickable
+`Area2D` on a map that will be replaced anyway, MVP2 exposes these
+systems as three always-visible HUD buttons. The underlying economy
+logic (money, recruitment queue, roster cap, weapon inventory, payroll)
+is the real, tested system MVP3 will attach to actual world buildings.

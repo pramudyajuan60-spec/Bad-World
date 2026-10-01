@@ -125,3 +125,73 @@ directly in the pull request/chat as verification evidence.
 - No automated camera pan/zoom/clamp-to-bounds test (visual-only check).
 - No FPS/performance measurement at the "unit count near cap" scale
   required by later MVPs' acceptance criteria.
+
+## MVP 2 automated checks (all run and passing at time of writing)
+
+7. **Weapon combat** (`tests/test_weapon_combat.gd`): a magazine
+   genuinely depletes round-by-round, triggers a reload once empty (with
+   reserve remaining) that refills correctly, and — once both magazine
+   and reserve are exhausted — the unit falls back to its equipped
+   melee secondary rather than "fake" firing forever. A separate case
+   places a solid obstacle directly between attacker and target and
+   proves zero shots are fired and zero damage lands despite the target
+   being technically in range (line-of-sight blocks the shot). Exit 0,
+   `[Tests] weapon_combat: all passed.`
+
+8. **Downed / revive / execution** (`tests/test_downed_revive_execute.gd`):
+   lethal damage downs a unit instead of freeing it instantly; an ally
+   channeling revive on a downed unit restores it to `IDLE` with partial
+   HP; an uninterrupted execution channel (the explicit 6s from Prompt
+   Dasar) permanently kills a downed hostile, while damaging the
+   executor mid-channel cancels it, leaving the target still downed; a
+   downed unit whose timer reaches zero without intervention dies
+   permanently. Exit 0, `[Tests] downed_revive_execute: all passed.`
+
+9. **Cover + suppression** (`tests/test_cover_and_suppression.gd`): the
+   same 100-damage hit is reduced when the attacker is on a defending
+   unit's covered side and full when on the open flank; taking fire
+   measurably reduces effective accuracy; and heavy suppression while
+   actively attacking triggers the simple retreat behavior. One real bug
+   was caught and fixed here during development: placing two units
+   closer together than their combined collision radius let
+   `move_and_slide()`'s physical collision resolution push them apart
+   every frame, silently drifting a unit out of its own weapon range
+   mid-test — worth remembering when placing units in any future test.
+   Exit 0, `[Tests] cover_and_suppression: all passed.`
+
+10. **Economy + safety** (`tests/test_economy_and_safety.gd`):
+    recruiting a unit deducts its price immediately but only joins the
+    roster after its full recruitment timer elapses; recruiting past
+    `max_roster` is rejected even with unlimited money; a payroll cycle
+    with insufficient funds is marked missed and applies the
+    accuracy/speed/morale penalty, while a subsequent funded cycle pays
+    and recovers morale; a unit standing inside a safe-zone radius takes
+    zero damage while an identical unit far outside takes full damage;
+    and an explosive hit on both an ally and a hostile inside its blast
+    radius deals strictly less damage to the ally (limited friendly
+    fire) and logs a warning. Exit 0,
+    `[Tests] economy_and_safety: all passed.`
+
+## MVP 2 manual visual verification
+
+Same Xvfb + Mesa llvmpipe approach as MVP1. Confirmed: the HUD topbar
+(money/roster) and three building buttons render; the Recruitment panel
+shows correct per-tier price/salary with Special locked; the Gun Shop
+panel lists all 10 weapons with correct prices and updates "owned
+(unassigned)" counts after a purchase (money deducted accordingly); the
+Inspect panel shows Juan's pre-equipped Pistol/Knife and offers newly
+purchased items for manual assignment to primary/secondary/grenade/armor
+slots. Screenshots shared in the pull request, not committed to the repo.
+
+## Known gaps not covered by MVP 2 tests
+
+- No automated test for the Recruitment/Gun Shop/Inspect HUD panels
+  themselves (button wiring) — verified manually/visually only.
+- No automated test for recruiting a downed enemy through to full
+  roster conversion (`bellarosa_test_map.gd::_on_recruit_completed`) —
+  the underlying channel mechanics (`order_recruit_downed`) share the
+  same tested code path as revive, but the economy-side conversion
+  (cost check, reparenting, roster increment) is manual/visual-only.
+- No automated test for grenade-throwing via the `G`-armed hotkey path
+  itself (the underlying explosive/AoE/friendly-fire mechanic it calls
+  is tested directly in test_economy_and_safety.gd).

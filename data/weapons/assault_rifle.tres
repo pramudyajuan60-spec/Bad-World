@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"weapon_assault_rifle"
+display_name = "Assault Rifle"
+category = 4
+price = 800
+magazine_size = 30
+reserve_ammo = 90
+damage = 22.0
+rate_of_fire_rpm = 600
+reload_time_sec = 2.4
+range_px = 380.0
+is_hitscan = true
+projectile_speed_px = 0.0
+is_melee = false
+uses_ammo = true
+is_explosive = false
+blast_radius_px = 0.0
+armor_damage_reduction = 0.0

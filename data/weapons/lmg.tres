@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"weapon_lmg"
+display_name = "LMG"
+category = 6
+price = 1600
+magazine_size = 60
+reserve_ammo = 180
+damage = 20.0
+rate_of_fire_rpm = 650
+reload_time_sec = 4.5
+range_px = 400.0
+is_hitscan = true
+projectile_speed_px = 0.0
+is_melee = false
+uses_ammo = true
+is_explosive = false
+blast_radius_px = 0.0
+armor_damage_reduction = 0.0
