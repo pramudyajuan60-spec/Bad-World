@@ -1,44 +1,79 @@
-# Bad-World
+# Bad World
 
-Single-player open-world real-time strategy concept ("BAD WORLD") — currently an
-**asset and lore repository**. There is no playable Godot build yet. The tracked
-content is campaign art, spritesheets, maps, and the multi-part build prompts.
+Single-player, open-world, 2.5D isometric real-time strategy game built
+in Godot 4.x with typed GDScript. Four asymmetric campaigns (Juan
+Bellarosa, Zie Vartieri, Andrés A. Násion, Nabil Verhan) built up
+incrementally through a sequence of MVPs defined in
+`Prompt AI Bad World GAME -/Part 1.txt` (base rules) through
+`Part 9.txt` (MVP 7, release candidate).
 
-## Layout
+**Current status: MVP 0 — Repository Audit and Godot Bootstrap.**
+No gameplay exists yet; see docs/IMPLEMENTATION_PLAN.md for the roadmap
+and docs/REPO_AUDIT.md for what MVP 0 actually verified.
 
-- `Assets/Campaign/<Faction>/` — per-faction art: `Main Character/`, `Maps/`,
-  `Sprit.../` (note the historical `Sprit` spelling), `Unit/`, `Vehicle/`.
-- `Assets/Game Maps/` — shared locations: world, bank, gun shop, garage,
-  recruitment place, drug dealers 1–3.
-- `Assets/Character Inspect/` — portraits: Juan, Fauzi, Atha, Nabil.
-- `Assets/Gun/` — gun references: B1, B2, B3.
-- `Prompt AI Bad World GAME -/` — 9-part build plan (Parts 1–9).
-- `Prompt SpritSheet/` — 6 spritesheet prompts (Dasar, MC, Minion, Parts 2–3, Weapon).
-- `docs/ASSET_INVENTORY.md` — verified file inventory and known naming mismatches.
+## Running the project
 
-## Campaigns
+1. Install **Godot 4.3 stable** (or a later 4.x stable release) from
+   https://godotengine.org/download/ — do not use a beta/preview build.
+2. Open this repository's root folder as the Godot project (it contains
+   `project.godot`), or run headlessly:
 
-| Faction | Main character | Map | Vehicle |
-|---|---|---|---|
-| Bellarosa Syndicate | Juan Bellarosa | Juan Maps (Mafia) | Bellarosa Syndicate Vehicle |
-| DEA Administrator | Nabil Verhan | Nabil Maps (DEA) | DEA Vehicle |
-| Nasion Familia | Andrés A. Násion | Atha Maps (Cartel) | Nasion Familia Vehicle |
-| Valtieri Cartel | Zie Vartieri | Fauzi Maps (Cartel) | Valtieri Vehicle |
+   ```sh
+   # Open in the editor
+   godot4 --path . --editor
 
-Each faction also has a `Main Character/Story.txt` (canonical lore, in Indonesian).
-Do not rewrite lore; presentation layers should quote or summarize it.
+   # Or just boot the (currently minimal) main scene once and quit
+   godot4 --headless --path . --quit
+   ```
 
-## Working rules
+## Automated checks
 
-- Do not modify or delete original assets destructively.
-- Keep derived crops, placeholders, or processed output in a separate directory.
-- Expect hostile filenames: most paths contain spaces or commas, basenames repeat
-  across folders, and some paths need quoting (see `docs/ASSET_INVENTORY.md`).
-- The `Sprit...` directory spelling is historical — document references to it
-  instead of renaming assets in a cleanup PR.
+```sh
+# Regenerate the asset manifest after any change under Assets/
+python3 tools/generate_asset_manifest.py
 
-## Status
+# Validate the manifest + data-driven campaign references (headless)
+godot4 --headless --path . --script res://tools/validate_asset_manifest.gd
 
-MVP 0 (repository audit + Godot bootstrap per `Part 2.txt`) has not landed:
-no `project.godot`, no scripts, no test setup. See the inventory doc for the
-verified baseline before scaffolding.
+# Run the MVP 0 data-layer smoke tests (headless)
+godot4 --headless --path . --script res://tests/test_campaign_data.gd
+```
+
+See docs/TEST_PLAN.md for exact expected output.
+
+## Documentation
+
+- `docs/REPO_AUDIT.md` — commit confirmation, asset inventory summary,
+  known naming/asset mismatches.
+- `docs/ASSET_INVENTORY.md` — source-art inventory snapshot and path hazards.
+- `docs/ASSET_MANIFEST.md` — full generated per-file asset catalog.
+- `docs/TECH_DECISIONS.md` — engine/version/renderer/layout choices.
+- `docs/ARCHITECTURE.md` — module breakdown and stable ID conventions.
+- `docs/BALANCE.md` — transcribed reference numbers (not yet implemented
+  in gameplay).
+- `docs/IMPLEMENTATION_PLAN.md` — the 8-MVP roadmap and current status.
+- `docs/PLACEHOLDER_REGISTER.md` — placeholder policy and known gaps.
+- `docs/TEST_PLAN.md` — how MVP 0 (and later MVPs) are verified.
+
+## Repository layout
+
+```
+Assets/                 Original art, story text, and reference maps (untouched)
+Prompt AI Bad World GAME -/   Base rules + one prompt per MVP (0-7)
+Prompt SpritSheet/      Prompts used to generate the sprite-sheet art
+project.godot           Godot project settings
+scenes/, scripts/       Godot scenes and typed GDScript
+data/                   Data-driven Resource instances (campaigns, factions, difficulty)
+tools/, tests/          Asset-manifest tooling and headless smoke tests
+docs/                   Project documentation (see above)
+```
+
+## Asset handling
+
+- Do not modify or delete original assets destructively; keep derived crops,
+  placeholders, and processed output in separate directories.
+- Many asset names contain spaces or commas, repeated basenames occur across
+  folders, and `Spritsheet/` is the historical on-disk spelling. Quote paths
+  in scripts and consult `docs/ASSET_INVENTORY.md` before referring to assets.
+- The four `Main Character/Story.txt` files contain canonical Indonesian lore;
+  do not rewrite them when building campaign presentation.

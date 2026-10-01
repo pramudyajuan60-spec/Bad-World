@@ -1,0 +1,30 @@
+; Bad World — Godot 4.x project settings (MVP 0 bootstrap).
+; See docs/TECH_DECISIONS.md for the reasoning behind engine/version/renderer
+; choices. Original Assets/ tree is untouched; it is simply included as
+; res://Assets.
+
+config_version=5
+
+[application]
+
+config/name="Bad World"
+config/description="Single-player open-world 2.5D isometric RTS. MVP 0: repository audit and Godot bootstrap only, no gameplay yet."
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+CampaignDatabase="*res://scripts/autoload/campaign_database.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

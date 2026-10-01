@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/faction_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"faction_bellarosa"
+display_name = "Bellarosa Syndicate"
+asset_folder = "Bellarosa Syndicate"
+description = "Juan Bellarosa's manipulation-and-intel driven syndicate, built in three years from a small network into one of Europe's most powerful criminal organizations."

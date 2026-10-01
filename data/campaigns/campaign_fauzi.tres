@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/campaign_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_vartieri.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"campaign_fauzi"
+menu_name = "Campaign Fauzi"
+main_character_name = "Zie Vartieri"
+faction = ExtResource("2")
+starting_money = 4500
+story_path = "res://Assets/Campaign/Valtieri Cartel/Main Character/Story.txt"
+portrait_path = "res://Assets/Character Inspect/Fauzi.png"
+main_character_sprite_path = "res://Assets/Campaign/Valtieri Cartel/Main Character/Zie Vartieri.png"
+concept_map_path = "res://Assets/Campaign/Valtieri Cartel/Maps/Fauzi Maps (Cartel).jpg"

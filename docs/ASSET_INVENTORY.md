@@ -1,7 +1,10 @@
 # Asset inventory (verified)
 
-Generated from `git ls-files` on the current checkout (322 tracked files).
-Counts below treat quoted non-ASCII paths by their real extension.
+Snapshot generated from `git ls-files` at PR commit `7b062e2`, before the MVP 0
+bootstrap added Godot project files and per-asset `.import` metadata. The counts
+below cover the original source assets, lore, and prompts only; they are not the
+current repository-wide file count. Quoted non-ASCII paths are counted by their
+real extension.
 
 ## Totals
 
@@ -57,8 +60,11 @@ Counts below treat quoted non-ASCII paths by their real extension.
 - `Story.txt` files are single-line walls of text (~5.3–5.7 KB each, Indonesian
   lore). Read with wrapping on; do not reformat the originals.
 
-## What is missing (per `Part 2.txt` MVP 0)
+## MVP 0 additions since this snapshot
 
-- No `project.godot`, no GDScript, no scene files, no test runner.
-- No `docs/PLACEHOLDER_REGISTER.md` yet (first needed when scaffolding lands).
-- `.gitattributes` / `.gitignore` binary hygiene added alongside this doc.
+- `project.godot`, scenes, typed GDScript, data resources, automated checks,
+  and additional project documentation are now present; see `README.md` and
+  `docs/REPO_AUDIT.md` for the current project entry points.
+- Godot `.import` metadata is generated project support and is excluded from
+  this source-art inventory.
+- `.gitattributes` and `.gitignore` provide binary/text and local-file hygiene.

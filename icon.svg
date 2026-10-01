@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- PLACEHOLDER project icon, not final art. See docs/PLACEHOLDER_REGISTER.md -->
+  <rect width="128" height="128" fill="#1b1b1f"/>
+  <text x="64" y="72" font-family="monospace" font-size="20" fill="#e0e0e0" text-anchor="middle">BW</text>
+</svg>
