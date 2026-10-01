@@ -9,3 +9,7 @@ display_name = "Easy"
 reaction_delay_sec = 2.5
 decision_interval_sec = 3.0
 notes = "Rarely flanks; attacks only with a large advantage; less effective at managing economy and ammo. No vision/money/unit cheats."
+decision_quality = 0.3
+utility_threshold_mult = 1.4
+retreat_hp_threshold = 0.2
+ambush_intel_patience_sec = 12.0

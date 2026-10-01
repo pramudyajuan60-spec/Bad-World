@@ -30,6 +30,8 @@ const HEAT_MANAGER_SCRIPT := preload("res://scripts/economy/heat_manager.gd")
 const ARMORY_SCRIPT := preload("res://scripts/economy/armory_building.gd")
 const ARMORY_PANEL_SCRIPT := preload("res://scripts/ui/armory_panel.gd")
 const ABILITY_BAR_SCRIPT := preload("res://scripts/ui/ability_bar.gd")
+const KNOWLEDGE_SCRIPT := preload("res://scripts/ai/faction_knowledge.gd")
+const AI_DEBUG_OVERLAY_SCENE := preload("res://scenes/ui/AiDebugOverlay.tscn")
 
 ## Open world bounds, large enough to fit 4 region HQs + Central City
 ## with real travel distance between them.
@@ -99,6 +101,19 @@ var _minimap: Control
 var _alert_panel: Control
 var _alert_label: Label
 var _combat_log: Node = null
+## MVP5: dev-only fog-of-war feed for this map's fixed hostile
+## encounters (the "Hostile (PLACEHOLDER)" test squad + DEA response
+## waves), exposed only through the F3 debug overlay. These squads are
+## deliberately stationary (can_move = false, an MVP1/3 design choice)
+## and keep using their existing tested BwUnit.auto_defend behavior —
+## a real, mobile TACTICAL/STRATEGIC AI faction only makes sense for a
+## unit that can actually move, which is exactly what the headless
+## AiMatchArena drives (see scripts/simulation/ai_match_arena.gd and
+## docs/TECH_DECISIONS.md "MVP5 live-game AI scope"). This knowledge
+## instance exists purely so a developer can see what these fixed
+## encounters would perceive, not to drive any decision of theirs.
+var _hostile_knowledge: Node = null
+var _ai_debug_overlay: Node = null
 
 ## MVP4: resolved once in _ready() from GameState.current_campaign_id.
 var current_campaign: CampaignData
@@ -153,6 +168,17 @@ func _ready() -> void:
 	heat_manager.world_bounds = MAP_BOUNDS
 	heat_manager.player_position_getter = Callable(self, "_get_player_center")
 	heat_manager.wave_dispatched.connect(_on_dea_wave_dispatched)
+
+	_hostile_knowledge = KNOWLEDGE_SCRIPT.new()
+	_hostile_knowledge.owner_faction_side = &"hostile_shared"
+	_hostile_knowledge.own_units_getter = Callable(self, "_get_hostile_units")
+	_hostile_knowledge.world_units_getter = Callable(self, "_get_player_side_units")
+	add_child(_hostile_knowledge)
+
+	_ai_debug_overlay = AI_DEBUG_OVERLAY_SCENE.instantiate()
+	add_child(_ai_debug_overlay)
+	_ai_debug_overlay.visible = false
+	_ai_debug_overlay.watched = [{"faction_side": &"hostile_shared", "knowledge": _hostile_knowledge}]
 
 	command_controller.selection_manager = selection_manager
 	command_controller.camera = camera
@@ -806,6 +832,14 @@ func _get_all_vehicles() -> Array:
 	return vehicles_root.get_children().filter(func(v): return v is Vehicle and is_instance_valid(v))
 
 
+func _get_hostile_units() -> Array:
+	return enemies_root.get_children().filter(func(u): return u is BwUnit and is_instance_valid(u))
+
+
+func _get_player_side_units() -> Array:
+	return units_root.get_children().filter(func(u): return u is BwUnit and is_instance_valid(u))
+
+
 ## ---------------------------------------------------------------
 ## Building interaction (E key): factory pickup, dealer sell, bank
 ## deposit, garage repair/buy, recruitment/gun shop panel toggle.
@@ -813,6 +847,12 @@ func _get_all_vehicles() -> Array:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		_handle_interact()
+	# MVP5 debug overlay toggle (Prompt Dasar: "Debug overlay tidak
+	# muncul pada release build"); the overlay's own _ready() already
+	# frees itself in a release export, so this key simply does
+	# nothing there since the node no longer exists.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F3 and is_instance_valid(_ai_debug_overlay):
+		_ai_debug_overlay.visible = not _ai_debug_overlay.visible
 
 
 func _handle_interact() -> void:

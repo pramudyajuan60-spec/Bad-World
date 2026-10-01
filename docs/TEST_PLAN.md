@@ -374,3 +374,107 @@ Allies" HUD button in place of the other factions' Heat/DEA mechanic.
   live by the balance simulation (which sets the synergy fields
   directly to isolate combat-power testing) but has no dedicated unit
   test proving the 12m radius boundary itself.
+
+## MVP 5 automated checks (all run and passing at time of writing)
+
+All 6 suites below (and every other suite in `tests/`) pass with
+`godot4 --headless --fixed-fps 600 --path . --script res://tests/
+<name>.gd`, exit 0. `--fixed-fps 600` is not cosmetic here — several of
+these suites drive dozens of real seconds of simulated gameplay through
+`await physics_frame` loops, and without it Godot's headless physics
+pacing makes them take that many real seconds too (see
+docs/TECH_DECISIONS.md "Headless AI simulation speed").
+
+20. **Information/fog-of-war** (`tests/test_mvp5_information.gd`):
+    proves an enemy within vision range + line-of-sight becomes known,
+    one far away does not (AI tidak omniscient), last-known-position
+    persists and reflects *where it was last seen* (not its current
+    real position) after losing sight, and staleness flips correctly
+    past `FactionKnowledge.STALE_AFTER_SEC`. Exit 0,
+    `[Tests] mvp5_information: all passed.`
+21. **Tactical AI** (`tests/test_mvp5_tactical_ai.gd`): target priority
+    (an equally-close enemy MC outranks a regular), proactive retreat
+    below the difficulty's `retreat_hp_threshold` while mid-attack, and
+    grenade avoidance (unit moves/logs a reason on a nearby enemy-
+    thrown `BattlefieldEvents.grenade_incoming` broadcast). Exit 0,
+    `[Tests] mvp5_tactical_ai: all passed.`
+22. **Ambush** (`tests/test_mvp5_ambush.gd`): a badly outnumbered squad
+    never arms (no tactical advantage); a strong squad with fresh
+    intel on a lone target arms, then genuinely triggers an attack once
+    the target reaches the chokepoint; a squad wiped before the target
+    arrives self-cancels back to IDLE with a logged reason (Prompt
+    Dasar: "AI dapat membatalkan ambush jika situasi berubah"). Exit 0,
+    `[Tests] mvp5_ambush: all passed.`
+23. **Diplomacy** (`tests/test_mvp5_diplomacy.gd`): neutral encounters
+    resolve to attack/intimidate and move trust; repeated favorable
+    encounters build enough trust to form an alliance; an active
+    alliance grants a nonzero trade bonus (and a non-allied faction
+    gets none); betrayal ends the alliance immediately with a real
+    negative trust consequence and is itself cooldown-gated (can't be
+    spammed); the neutral faction is never treated as auto-hostile by
+    default while a real rival cartel is; and the class exposes no
+    shared-victory method at all. Exit 0,
+    `[Tests] mvp5_diplomacy: all passed.`
+24. **Strategic AI economy loop** (`tests/test_mvp5_strategic_ai.gd`):
+    isolated from combat — proves the acceptance criteria "AI dapat
+    menyelesaikan economy loop sendiri" (a real recruitment completes
+    unattended over the simulated window) and "AI dapat membeli ammo
+    ketika menipis" (a seeded low-ammo unit gets resupplied while a
+    full-ammo unit is left alone) against real `CampaignEconomy`/
+    `Factory`/`Bank`/`DrugDealer`/`Vehicle` instances, plus a vehicle
+    purchase. Exit 0, `[Tests] mvp5_strategic_ai: all passed.`
+25. **Full headless AI-vs-AI arena** (`tests/test_mvp5_arena.gd`,
+    acceptance: "Headless simulation dapat berjalan untuk beberapa
+    match"): runs 4 complete matches between two fully AI-controlled
+    factions (real economy + combat + every MVP5 AI layer) via
+    `AiMatchArena`, each resolving once one side's Main Character dies
+    or a 240s simulated timeout elapses. Asserts matches actually
+    resolve and that neither side wins literally every single trial
+    (which would indicate a cheat/asymmetry bug rather than genuinely
+    contested AI decisions). Exit 0, `[Tests] mvp5_arena: all passed.`
+    Captured run: all 4 trials resolved (`faction_b` won 3,
+    `faction_a` won 1).
+
+The explicit "Laporkan hasil win-rate awal per faction/difficulty"
+acceptance criterion is a reporting tool, not a pass/fail test:
+`tools/run_ai_winrate_report.gd` (run the same way, with
+`--fixed-fps 600`). Full captured output and interpretation in
+docs/BALANCE.md "MVP5 initial AI win-rate report" and "MVP5 difficulty
+scaling".
+
+## MVP5 manual visual verification
+
+Same Xvfb + Mesa llvmpipe approach as MVP1-4, this time using a
+temporary debug-only autoload to drive a few automatic frames/
+screenshots rather than manual input (no new permanent project
+setting — the autoload was added and removed for this verification
+only). Confirmed via screenshots: the open-world map with the F3 debug
+overlay toggled off (normal gameplay view, unaffected) and toggled on
+(overlay panel showing "Known enemies: 1" with a correct "[fresh]" tag
+and position for the player's own MC, which the fixed hostile squad's
+shared dev-only `FactionKnowledge` had genuinely detected via its real
+vision/line-of-sight check — not a hardcoded display). An earlier pass
+of this same screenshot caught the dead-weight tactical-AI-on-
+stationary-units mistake described in docs/TECH_DECISIONS.md "MVP5
+live-game AI scope", which was fixed before this final capture.
+
+## Known gaps not covered by MVP5 tests
+
+- No automated test for the F3 debug-overlay keybinding itself (the
+  overlay's own content/release-gating is covered by manual
+  verification and by `OS.has_feature` being Godot's documented,
+  engine-level mechanism — not independently re-tested here).
+- No automated test exercises `AmbushController` or
+  `FactionStrategicAI`'s raid/attack-MC logic together with live,
+  resolving combat in the same test as the ambush/strategic unit
+  tests — that combination is instead covered end-to-end by the
+  `AiMatchArena` suite, which doesn't isolate ambush/raid specifically
+  from the rest of a faction's behavior.
+- Ambush chokepoints are plain caller-supplied `Vector2` points with no
+  automatic detection of map geometry (bridges/alleys/narrow roads);
+  not exercised because the open world map has no dedicated geometry
+  for those features yet.
+- The win-rate report (`tools/run_ai_winrate_report.gd`) is a reporting
+  tool run manually, not wired into any automated pass/fail test, per
+  Prompt Dasar only asking for an initial report rather than a balance
+  gate at this MVP.

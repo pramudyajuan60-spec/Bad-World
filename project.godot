@@ -19,6 +19,7 @@ CampaignDatabase="*res://scripts/autoload/campaign_database.gd"
 GameState="*res://scripts/autoload/game_state.gd"
 SaveService="*res://scripts/autoload/save_service.gd"
 CombatLog="*res://scripts/autoload/combat_log.gd"
+BattlefieldEvents="*res://scripts/autoload/battlefield_events.gd"
 
 [display]
 

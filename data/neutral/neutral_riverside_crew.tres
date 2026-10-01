@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/neutral_faction_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"neutral_riverside_crew"
+display_name = "Riverside Crew"
+description = "A small independent local outfit (PLACEHOLDER identity/art) holding the river district between the 4 cartel HQs. Not aligned with any cartel or the DEA."
+allied_dealer_value_bonus = 0.15

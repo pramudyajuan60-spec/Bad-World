@@ -362,3 +362,54 @@ sync. Same reasoning for `Vehicle._vehicle_commander_bonus()`, which
 scans for a nearby friendly MC with the ability every time it's needed
 rather than caching a reference (Zie can move in and out of range at
 any moment).
+
+### Headless AI simulation speed: `--fixed-fps` is required, not optional
+
+Godot's headless physics loop otherwise paces itself close to real
+wall-clock time even though nothing is rendered — a simulated 200s AI
+match (MVP5's `AiMatchArena`) took roughly 200 real seconds to run
+without it. Passing `--fixed-fps 600` decouples simulation stepping
+from wall-clock pacing: the same test that times out against a 90s
+real-time budget resolves in a few real seconds. This cut MVP4's
+balance-simulation suite from ~200-300s down to ~3s and made MVP5's
+36-match win-rate report (`tools/run_ai_winrate_report.gd`) practical
+at all. Every MVP5 test/tool that drives `await physics_frame` in a
+loop documents this flag in its own run command; earlier MVP suites
+still work fine without it (their simulated durations are short enough
+that real-time pacing was never a problem), so this is additive
+guidance, not a retroactive requirement on MVP1-4's suites.
+
+### MVP5 live-game AI scope: fixed hostile encounters keep `auto_defend`, not the new mobile AI
+
+The open world map's small fixed hostile encounters — the starting
+"Hostile (PLACEHOLDER)" squad and DEA response waves — are deliberately
+**stationary** (`can_move = false`, an MVP1/3 design choice: they are
+static defenders of a position, not a roaming force). An early MVP5
+pass attached `UnitTacticalAI` to them anyway; since `order_attack`/
+`order_move` both no-op via `_can_receive_orders()` when `can_move` is
+false, this was dead weight that did nothing but was caught by visual
+(Xvfb) verification showing a hostile logged a "protecting"/"engaging"
+decision reason while visibly standing still. It was removed — these
+encounters keep their existing, already-tested `auto_defend` behavior
+(`BwUnit._physics_process`'s own `State.IDLE` branch). The real,
+fully mobile STRATEGIC+TACTICAL AI faction (recruitment, economy,
+raiding, ambush, attack-MC decisions) is exercised instead by the
+headless `AiMatchArena` (`scripts/simulation/ai_match_arena.gd`), which
+spawns complete independent faction economies with mobile units from
+scratch. A true rival cartel AI faction roaming the live open world
+(the other 3 HQs becoming active factions rather than inert landmark
+markers) is deferred to whichever later MVP first gives campaign
+presentation a reason to populate them.
+
+### AI debug overlay release-gating uses `OS.has_feature("release")`, not a custom project setting
+
+Prompt Dasar requires the MVP5 debug overlay to not appear in a release
+build. Godot's engine-verified way to detect an actual exported
+release build at runtime is `OS.has_feature("release")` (true only in
+a `release` export template, false in the editor and in a `debug`
+export) — not `OS.has_feature("editor")` (which is false in *any*
+export, debug or release) and not a project-settings flag (which an
+exporter could forget to flip). `AiDebugOverlay._ready()` calls
+`queue_free()` on itself immediately when this is true, so it
+structurally cannot exist in a release export regardless of whether a
+developer remembers to hide it.
