@@ -19,3 +19,4 @@ strengths = Array[String](["Strongest individual units of the four factions", "S
 weaknesses = Array[String](["No B1 tier at all (more expensive roster floor, B2 minimum)", "No Factory/Dealer economy loop — no cartel cargo income", "Lowest max roster of the four factions (24 vs 30)"])
 economy_rating_stars = 3
 economy_rating_label = "No Factory/Dealer loop — relies on City Patrol income and Armory crafting instead"
+vehicle_texture_path = "res://Assets/Campaign/DEA Administrator/Vehicle/DEA Vehicle.jpg"

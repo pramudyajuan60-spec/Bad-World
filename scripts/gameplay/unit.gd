@@ -227,9 +227,25 @@ var _battlefield_events: Node = null
 
 @onready var nav_agent: NavigationAgent2D = $NavAgent
 @onready var body_poly: Polygon2D = $Body
+@onready var char_sprite: Sprite2D = $CharSprite
 @onready var selection_ring: Node2D = $SelectionRing
 @onready var health_bar: Node2D = $HealthBar
 @onready var tier_label_node: Label = $TierLabel
+
+## Real-art visual (see docs/TECH_DECISIONS.md "Character sprite
+## integration"). Cached once in _setup_body_visual(); null means no
+## real art exists for this unit's unit_data, so the original
+## placeholder Polygon2D circle remains the visual (see
+## docs/PLACEHOLDER_REGISTER.md PLACEHOLDER_unit_body).
+const CHAR_SPRITE_TARGET_HEIGHT := 56.0
+var _idle_texture: Texture2D = null
+var _moving_texture: Texture2D = null
+var _sprite_flip_h: bool = false
+## States visually rendered with the "moving" pose when real art exists.
+const _MOVING_STATES := [
+	State.MOVING, State.ATTACK_MOVING, State.PATROLLING,
+	State.RETREATING, State.MOVING_TO_COVER,
+]
 
 
 func _ready() -> void:
@@ -265,6 +281,44 @@ func _setup_body_visual() -> void:
 		pts.append(Vector2(cos(angle), sin(angle)) * radius)
 	body_poly.polygon = pts
 	body_poly.color = Color(0.15, 0.45, 0.85) if faction_side == &"player" else Color(0.75, 0.2, 0.2)
+	_try_load_real_sprite()
+
+
+## Loads the real extracted character art for unit_data, if any exists
+## (tools/asset_pipeline/extract_character_sprites.py output). Falls
+## back to the original Polygon2D placeholder circle when no art is
+## registered for this tier/faction yet.
+func _try_load_real_sprite() -> void:
+	if unit_data == null or unit_data.world_sprite_path == "" or not ResourceLoader.exists(unit_data.world_sprite_path):
+		return
+	_idle_texture = load(unit_data.world_sprite_path)
+	if unit_data.world_sprite_moving_path != "" and ResourceLoader.exists(unit_data.world_sprite_moving_path):
+		_moving_texture = load(unit_data.world_sprite_moving_path)
+	else:
+		_moving_texture = _idle_texture
+	if _idle_texture == null:
+		return
+	body_poly.visible = false
+	char_sprite.visible = true
+	char_sprite.texture = _idle_texture
+	var h: float = float(_idle_texture.get_height())
+	if h > 0.0:
+		char_sprite.scale = Vector2.ONE * (CHAR_SPRITE_TARGET_HEIGHT / h)
+
+
+## Called every physics frame (see _physics_process) to keep the real
+## sprite's pose/facing honest to actual current movement -- never a
+## fabricated multi-frame cycle, just a swap between the two real
+## extracted poses, plus mirroring the existing art left/right (the
+## only direction info the source art's single camera angle supports).
+func _update_sprite_visual() -> void:
+	if not char_sprite.visible:
+		return
+	var is_moving: bool = state in _MOVING_STATES and velocity.length() > 2.0
+	char_sprite.texture = _moving_texture if is_moving else _idle_texture
+	if absf(velocity.x) > 2.0:
+		_sprite_flip_h = velocity.x < 0.0
+	char_sprite.flip_h = _sprite_flip_h
 
 
 func set_selected(value: bool) -> void:
@@ -736,6 +790,8 @@ func _enter_downed() -> void:
 	velocity = Vector2.ZERO
 	if body_poly:
 		body_poly.modulate = Color(1, 1, 1, 0.4)
+	if char_sprite:
+		char_sprite.modulate = Color(1, 1, 1, 0.4)
 	if selection_ring:
 		selection_ring.visible = false
 	downed.emit(self)
@@ -752,6 +808,8 @@ func _complete_revive() -> void:
 	state = State.IDLE
 	if body_poly:
 		body_poly.modulate = Color(1, 1, 1, 1)
+	if char_sprite:
+		char_sprite.modulate = Color(1, 1, 1, 1)
 	if health_bar:
 		health_bar.set_ratio(hp / max_hp)
 	revived.emit(self)
@@ -832,6 +890,7 @@ func _physics_process(delta: float) -> void:
 				var enemy := _find_nearest_enemy(acquire_range)
 				if enemy:
 					order_attack(enemy)
+	_update_sprite_visual()
 
 
 func _process_movement() -> void:

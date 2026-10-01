@@ -1,0 +1,638 @@
+{
+  "bellarosa": {
+    "b1": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B1/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b1/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b1/moving.png",
+      "moving_size": [
+        380,
+        512
+      ]
+    },
+    "b1_alt2": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B1/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b1_alt2/idle.png",
+      "idle_size": [
+        373,
+        527
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b1_alt2/moving.png",
+      "moving_size": [
+        370,
+        527
+      ]
+    },
+    "b1_alt3": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B1/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b1_alt3/idle.png",
+      "idle_size": [
+        328,
+        599
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b1_alt3/moving.png",
+      "moving_size": [
+        328,
+        599
+      ]
+    },
+    "b1_alt4": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B1/Char 4/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b1_alt4/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b1_alt4/moving.png",
+      "moving_size": [
+        384,
+        490
+      ]
+    },
+    "b2": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B2/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b2/idle.png",
+      "idle_size": [
+        362,
+        543
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b2/moving.png",
+      "moving_size": [
+        362,
+        533
+      ]
+    },
+    "b2_alt2": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B2/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b2_alt2/idle.png",
+      "idle_size": [
+        362,
+        543
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b2_alt2/moving.png",
+      "moving_size": [
+        337,
+        543
+      ]
+    },
+    "b2_alt3": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B2/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b2_alt3/idle.png",
+      "idle_size": [
+        362,
+        543
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b2_alt3/moving.png",
+      "moving_size": [
+        362,
+        543
+      ]
+    },
+    "b3": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B3/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b3/idle.png",
+      "idle_size": [
+        384,
+        506
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b3/moving.png",
+      "moving_size": [
+        384,
+        506
+      ]
+    },
+    "b3_alt2": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/B3/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/b3_alt2/idle.png",
+      "idle_size": [
+        328,
+        599
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/b3_alt2/moving.png",
+      "moving_size": [
+        328,
+        598
+      ]
+    },
+    "mc": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/Juan Bellarosa/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/mc/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/mc/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_elena_varga": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/Special Unit/Elena Varga/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/special_elena_varga/idle.png",
+      "idle_size": [
+        380,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/special_elena_varga/moving.png",
+      "moving_size": [
+        382,
+        509
+      ]
+    },
+    "special_matteo_rizzo": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/Special Unit/Matteo Rizzo/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/special_matteo_rizzo/idle.png",
+      "idle_size": [
+        323,
+        608
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/special_matteo_rizzo/moving.png",
+      "moving_size": [
+        323,
+        583
+      ]
+    },
+    "special_viktor_moreau": {
+      "source": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/Special Unit/Viktor Moreau/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/bellarosa/special_viktor_moreau/idle.png",
+      "idle_size": [
+        362,
+        543
+      ],
+      "moving": "Assets/Generated/Characters/bellarosa/special_viktor_moreau/moving.png",
+      "moving_size": [
+        362,
+        543
+      ]
+    }
+  },
+  "vartieri": {
+    "b1": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B1/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b1/idle.png",
+      "idle_size": [
+        384,
+        510
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b1/moving.png",
+      "moving_size": [
+        384,
+        494
+      ]
+    },
+    "b1_alt2": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B1/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b1_alt2/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b1_alt2/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b1_alt3": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B1/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b1_alt3/idle.png",
+      "idle_size": [
+        384,
+        506
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b1_alt3/moving.png",
+      "moving_size": [
+        384,
+        504
+      ]
+    },
+    "b2": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B2/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b2/idle.png",
+      "idle_size": [
+        383,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b2/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b2_alt2": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B2/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b2_alt2/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b2_alt2/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b2_alt3": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B2/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b2_alt3/idle.png",
+      "idle_size": [
+        384,
+        508
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b2_alt3/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b3": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B3/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b3/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b3/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b3_alt2": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/B3/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/b3_alt2/idle.png",
+      "idle_size": [
+        384,
+        507
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/b3_alt2/moving.png",
+      "moving_size": [
+        384,
+        505
+      ]
+    },
+    "mc": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/ZIe Vartieri/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/mc/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/mc/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_1": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/Special Unit/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/special_1/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/special_1/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_2": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/Special Unit/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/special_2/idle.png",
+      "idle_size": [
+        443,
+        443
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/special_2/moving.png",
+      "moving_size": [
+        443,
+        443
+      ]
+    },
+    "special_3": {
+      "source": "Assets/Campaign/Valtieri Cartel/Spritsheet/Special Unit/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/vartieri/special_3/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/vartieri/special_3/moving.png",
+      "moving_size": [
+        384,
+        510
+      ]
+    }
+  },
+  "nasion": {
+    "b1": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B1/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b1/idle.png",
+      "idle_size": [
+        380,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b1/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b1_alt2": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B1/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b1_alt2/idle.png",
+      "idle_size": [
+        323,
+        607
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b1_alt2/moving.png",
+      "moving_size": [
+        323,
+        607
+      ]
+    },
+    "b1_alt3": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B1/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b1_alt3/idle.png",
+      "idle_size": [
+        323,
+        607
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b1_alt3/moving.png",
+      "moving_size": [
+        323,
+        607
+      ]
+    },
+    "b1_alt4": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B1/Char 4/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b1_alt4/idle.png",
+      "idle_size": [
+        328,
+        599
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b1_alt4/moving.png",
+      "moving_size": [
+        328,
+        599
+      ]
+    },
+    "b2": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B2/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b2/idle.png",
+      "idle_size": [
+        384,
+        493
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b2/moving.png",
+      "moving_size": [
+        384,
+        491
+      ]
+    },
+    "b2_alt2": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B2/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b2_alt2/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b2_alt2/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b2_alt3": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B2/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b2_alt3/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b2_alt3/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b3": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B3/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b3/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b3/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "b3_alt2": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/B3/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/b3_alt2/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/nasion/b3_alt2/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "mc": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/Andr\u00e9s A.N\u00e1sion/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/mc/idle.png",
+      "idle_size": [
+        382,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/nasion/mc/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_1": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/Special Unit/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/special_1/idle.png",
+      "idle_size": [
+        384,
+        487
+      ],
+      "moving": "Assets/Generated/Characters/nasion/special_1/moving.png",
+      "moving_size": [
+        384,
+        493
+      ]
+    },
+    "special_2": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/Special Unit/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/special_2/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/nasion/special_2/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_3": {
+      "source": "Assets/Campaign/Nasion Familia/Spritsheet/Special Unit/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/nasion/special_3/idle.png",
+      "idle_size": [
+        376,
+        511
+      ],
+      "moving": "Assets/Generated/Characters/nasion/special_3/moving.png",
+      "moving_size": [
+        384,
+        493
+      ]
+    }
+  },
+  "dea": {
+    "b2": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/B2/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/b2/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/dea/b2/moving.png",
+      "moving_size": [
+        384,
+        481
+      ]
+    },
+    "b2_alt2": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/B2/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/b2_alt2/idle.png",
+      "idle_size": [
+        384,
+        510
+      ],
+      "moving": "Assets/Generated/Characters/dea/b2_alt2/moving.png",
+      "moving_size": [
+        384,
+        509
+      ]
+    },
+    "b2_alt3": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/B2/Char 3/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/b2_alt3/idle.png",
+      "idle_size": [
+        328,
+        599
+      ],
+      "moving": "Assets/Generated/Characters/dea/b2_alt3/moving.png",
+      "moving_size": [
+        328,
+        599
+      ]
+    },
+    "b3": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/B3/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/b3/idle.png",
+      "idle_size": [
+        384,
+        508
+      ],
+      "moving": "Assets/Generated/Characters/dea/b3/moving.png",
+      "moving_size": [
+        384,
+        507
+      ]
+    },
+    "b3_alt2": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/B3/Char 2/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/b3_alt2/idle.png",
+      "idle_size": [
+        383,
+        511
+      ],
+      "moving": "Assets/Generated/Characters/dea/b3_alt2/moving.png",
+      "moving_size": [
+        384,
+        510
+      ]
+    },
+    "mc": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/Nabil Verhan/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/mc/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/dea/mc/moving.png",
+      "moving_size": [
+        384,
+        495
+      ]
+    },
+    "special_armored_bulwark": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/Special Unit/Armored Bulwark/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/special_armored_bulwark/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/dea/special_armored_bulwark/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_ghost_operative": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/Special Unit/Ghost Operative/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/special_ghost_operative/idle.png",
+      "idle_size": [
+        384,
+        490
+      ],
+      "moving": "Assets/Generated/Characters/dea/special_ghost_operative/moving.png",
+      "moving_size": [
+        384,
+        492
+      ]
+    },
+    "special_pursuit_interceptor": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/Special Unit/Pursuit Interceptor/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/special_pursuit_interceptor/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/dea/special_pursuit_interceptor/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_shadow_runner": {
+      "source": "Assets/Campaign/DEA Administrator/Spritsheet/Special Unit/Shadow Runner/PERGERAKAN DAN KONDISI KARAKTER.png",
+      "idle": "Assets/Generated/Characters/dea/special_shadow_runner/idle.png",
+      "idle_size": [
+        384,
+        512
+      ],
+      "moving": "Assets/Generated/Characters/dea/special_shadow_runner/moving.png",
+      "moving_size": [
+        384,
+        512
+      ]
+    },
+    "special_dog": {
+      "error": "missing sheet",
+      "path": "/tmp/hoplite/workspace/Assets/Campaign/DEA Administrator/Spritsheet/Dog/PERGERAKAN DAN KONDISI KARAKTER.png"
+    }
+  }
+}

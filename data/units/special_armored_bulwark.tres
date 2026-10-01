@@ -15,3 +15,5 @@ base_accuracy = 0.62
 move_speed = 2.2
 recruit_price = 7500
 salary = 500
+world_sprite_path = "res://Assets/Generated/Characters/dea/special_armored_bulwark/idle.png"
+world_sprite_moving_path = "res://Assets/Generated/Characters/dea/special_armored_bulwark/moving.png"

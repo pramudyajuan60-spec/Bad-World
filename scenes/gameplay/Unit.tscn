@@ -17,6 +17,9 @@ shape = SubResource("1")
 
 [node name="Body" type="Polygon2D" parent="."]
 
+[node name="CharSprite" type="Sprite2D" parent="."]
+visible = false
+
 [node name="NavAgent" type="NavigationAgent2D" parent="."]
 
 [node name="SelectionRing" type="Node2D" parent="."]
