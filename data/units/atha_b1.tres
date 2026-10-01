@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_nasion.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"unit_atha_b1"
+display_name = "B1"
+tier = 0
+faction = ExtResource("2")
+base_hp = 85
+base_armor = 0
+base_accuracy = 0.48
+move_speed = 3.2
+recruit_price = 250
+salary = 30

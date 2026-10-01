@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_bellarosa.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"unit_special_viktor_moreau"
+display_name = "Viktor Moreau"
+tier = 3
+faction = ExtResource("2")
+base_hp = 260
+base_armor = 4
+base_accuracy = 0.72
+move_speed = 3.0
+recruit_price = 5500
+salary = 400

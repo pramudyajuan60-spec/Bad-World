@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ability_vehicle_commander"
+display_name = "Vehicle Commander"
+category = 0
+description = "Passive aura: nearby allied vehicles get a handling/turret bonus and cheaper repairs while Zie is alive and close."
+counterplay_note = "Only affects vehicles within radius_px of Zie; the bonus vanishes the moment Zie leaves range, is downed, or dies."
+radius_px = 260.0
+vehicle_hp_mult = 1.20
+vehicle_speed_mult = 1.12
+vehicle_turret_damage_mult = 1.15
+vehicle_repair_cost_mult = 0.80

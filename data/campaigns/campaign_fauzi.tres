@@ -1,7 +1,17 @@
-[gd_resource type="Resource" load_steps=3 format=3]
+[gd_resource type="Resource" load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/campaign_data.gd" id="1"]
 [ext_resource type="Resource" path="res://data/factions/faction_vartieri.tres" id="2"]
+[ext_resource type="Resource" path="res://data/units/fauzi_mc.tres" id="3"]
+[ext_resource type="Resource" path="res://data/units/fauzi_b1.tres" id="4"]
+[ext_resource type="Resource" path="res://data/units/fauzi_b2.tres" id="5"]
+[ext_resource type="Resource" path="res://data/units/fauzi_b3.tres" id="6"]
+[ext_resource type="Resource" path="res://data/units/special_axe_assault.tres" id="7"]
+[ext_resource type="Resource" path="res://data/units/special_sniper_specialist.tres" id="8"]
+[ext_resource type="Resource" path="res://data/units/special_machine_gunner.tres" id="9"]
+[ext_resource type="Resource" path="res://data/abilities/vehicle_commander.tres" id="10"]
+[ext_resource type="Resource" path="res://data/abilities/deceptive_assault.tres" id="11"]
+[ext_resource type="Resource" path="res://data/vehicles/armored_suv.tres" id="12"]
 
 [resource]
 script = ExtResource("1")
@@ -14,3 +24,10 @@ story_path = "res://Assets/Campaign/Valtieri Cartel/Main Character/Story.txt"
 portrait_path = "res://Assets/Character Inspect/Fauzi.png"
 main_character_sprite_path = "res://Assets/Campaign/Valtieri Cartel/Main Character/Zie Vartieri.png"
 concept_map_path = "res://Assets/Campaign/Valtieri Cartel/Maps/Fauzi Maps (Cartel).jpg"
+mc_unit = ExtResource("3")
+b1_unit = ExtResource("4")
+b2_unit = ExtResource("5")
+b3_unit = ExtResource("6")
+special_units = Array[Resource]([ExtResource("7"), ExtResource("8"), ExtResource("9")])
+abilities = Array[Resource]([ExtResource("10"), ExtResource("11")])
+starting_vehicle = ExtResource("12")

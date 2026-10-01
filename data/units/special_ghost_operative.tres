@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/factions/faction_dea.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"unit_special_ghost_operative"
+display_name = "Ghost Operative"
+tier = 3
+faction = ExtResource("2")
+base_hp = 240
+base_armor = 3
+base_accuracy = 0.78
+move_speed = 3.4
+recruit_price = 7500
+salary = 500

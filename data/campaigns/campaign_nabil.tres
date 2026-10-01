@@ -1,7 +1,16 @@
-[gd_resource type="Resource" load_steps=3 format=3]
+[gd_resource type="Resource" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/campaign_data.gd" id="1"]
 [ext_resource type="Resource" path="res://data/factions/faction_dea.tres" id="2"]
+[ext_resource type="Resource" path="res://data/units/nabil_mc.tres" id="3"]
+[ext_resource type="Resource" path="res://data/units/nabil_b2.tres" id="4"]
+[ext_resource type="Resource" path="res://data/units/nabil_b3.tres" id="5"]
+[ext_resource type="Resource" path="res://data/units/special_ghost_operative.tres" id="6"]
+[ext_resource type="Resource" path="res://data/units/special_shadow_runner.tres" id="7"]
+[ext_resource type="Resource" path="res://data/units/special_pursuit_interceptor.tres" id="8"]
+[ext_resource type="Resource" path="res://data/units/special_armored_bulwark.tres" id="9"]
+[ext_resource type="Resource" path="res://data/abilities/discipline_aura.tres" id="10"]
+[ext_resource type="Resource" path="res://data/vehicles/compact.tres" id="11"]
 
 [resource]
 script = ExtResource("1")
@@ -14,3 +23,9 @@ story_path = "res://Assets/Campaign/DEA Administrator/Main Character/Story.txt"
 portrait_path = "res://Assets/Character Inspect/Nabil.jpg"
 main_character_sprite_path = "res://Assets/Campaign/DEA Administrator/Main Character/Nabil Verhan.png"
 concept_map_path = "res://Assets/Campaign/DEA Administrator/Maps/Nabil Maps (DEA).jpg"
+mc_unit = ExtResource("3")
+b2_unit = ExtResource("4")
+b3_unit = ExtResource("5")
+special_units = Array[Resource]([ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9")])
+abilities = Array[Resource]([ExtResource("10")])
+starting_vehicle = ExtResource("11")

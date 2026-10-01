@@ -36,6 +36,17 @@ enum State {
 const COVER_DAMAGE_REDUCTION := 0.35
 const COVER_SEARCH_RADIUS := 420.0
 const SUPPRESSION_PER_HIT := 25.0
+## MVP4 addition: Special/MC tiers are veteran, hardened combatants and
+## intrinsically resist suppression more than regular grunts (Prompt
+## Dasar doesn't specify a tier/suppression relationship — this is a
+## documented balance assumption, see docs/BALANCE.md "Special/MC
+## suppression resistance", surfaced by writing the required MVP4
+## balance simulation: without it, any single high-value unit facing
+## several simultaneous attackers gets suppression-locked into an
+## unbreakable retreat loop regardless of its own stats, which made
+## "a Special can handle ~4xB1" structurally impossible under the
+## MVP2 suppression model).
+const SPECIAL_TIER_SUPPRESSION_RESIST := 0.45
 const SUPPRESSION_DECAY_PER_SEC := 15.0
 const MAX_SUPPRESSION_ACCURACY_PENALTY := 0.4
 const SUPPRESSION_RETREAT_THRESHOLD := 70.0
@@ -86,6 +97,52 @@ var is_driver: bool = false
 var carried_cargo: int = 0
 var carried_cash: int = 0
 const CARGO_CAPACITY := 2
+
+## ---------------------------------------------------------------
+## MVP4: Main Character abilities, leveling, and transient buffs.
+## See docs/TECH_DECISIONS.md "Ability system" for the design.
+## ---------------------------------------------------------------
+## Only populated for tier_label == "MC" by the spawning scene.
+var abilities: Array = [] # Array[AbilityData]
+var _ability_cooldowns: Dictionary = {} # StringName -> remaining seconds
+## Bonus applied to this unit's *own* recruit-enemy conversion price,
+## e.g. Juan's Master Manipulator (see docs/BALANCE.md). 1.0 = no change.
+var recruit_cost_multiplier: float = 1.0
+
+var mc_level: int = 1
+## Set by the spawning scene when this unit is a Special (index into
+## CampaignData.special_units); -1 for non-Special units. Persisted so
+## save/load can restore _recruited_special_ids without re-deriving it.
+var special_index: int = -1
+const MC_MAX_LEVEL := 5
+## Prompt Dasar "MAIN CHARACTER" upgrade cost table, levels 2-5.
+const MC_LEVEL_COSTS := {2: 1000, 3: 2000, 4: 3500, 5: 5500}
+## Cumulative caps at level 5, applied linearly per level per Prompt
+## Dasar ("Jangan membuat scaling tanpa batas").
+const MC_MAX_HP_BONUS_FRAC := 0.20
+const MC_MAX_DAMAGE_BONUS_FRAC := 0.08
+const MC_MAX_COOLDOWN_REDUCTION_FRAC := 0.15
+var _mc_base_max_hp: float = 0.0
+
+## Temporary buffs applied by abilities (self-cast or squad-cast).
+## Decay automatically in _physics_process.
+var temp_damage_mult: float = 1.0
+var temp_accuracy_bonus: float = 0.0
+var _temp_buff_timer: float = 0.0
+
+## Continuously recomputed each physics frame from nearby AURA-category
+## abilities on friendly Main Characters (Tactical Link, Discipline
+## Aura). Applied on top of temp_accuracy_bonus.
+var aura_accuracy_bonus: float = 0.0
+var aura_suppression_resist_mult: float = 0.0
+
+## MVP4: Zie's Triad Synergy (Prompt Dasar: active only when all 3 of
+## her Specials are alive and within 12m of each other). Computed
+## externally by the owning map scene (it alone knows which 3 unit
+## instances make up the trio) and applied here as plain multipliers.
+var synergy_damage_mult: float = 1.0
+var synergy_armor_reduction: float = 0.0
+var synergy_suppression_resist_mult: float = 0.0
 
 @export var max_hp: float = 100.0
 @export var move_speed_px: float = 190.0
@@ -169,6 +226,7 @@ func _ready() -> void:
 		if display_name == "":
 			display_name = unit_data.display_name
 	hp = max_hp
+	_mc_base_max_hp = max_hp
 	add_to_group("bw_units")
 	nav_agent.velocity_computed.connect(_on_velocity_computed)
 	nav_agent.radius = 14.0
@@ -220,6 +278,180 @@ func equip_weapon(slot: String, weapon: WeaponData) -> void:
 			grenade_count = weapon.magazine_size if weapon else 0
 		"armor":
 			armor_weapon = weapon
+
+
+## ---------------------------------------------------------------
+## Main Character leveling (Prompt Dasar "MAIN CHARACTER" upgrade,
+## levels 2-5, capped cumulative bonuses).
+## ---------------------------------------------------------------
+func mc_upgrade_cost() -> int:
+	if mc_level >= MC_MAX_LEVEL:
+		return -1
+	return MC_LEVEL_COSTS[mc_level + 1]
+
+
+func mc_upgrade() -> bool:
+	if mc_level >= MC_MAX_LEVEL:
+		return false
+	mc_level += 1
+	_apply_mc_level_bonuses()
+	_log_event("%s reached Main Character level %d." % [display_name, mc_level])
+	return true
+
+
+func _apply_mc_level_bonuses() -> void:
+	var progress: float = float(mc_level - 1) / float(MC_MAX_LEVEL - 1) # 0.0 at level 1, 1.0 at level 5
+	var hp_frac: float = progress * MC_MAX_HP_BONUS_FRAC
+	var new_max_hp: float = _mc_base_max_hp * (1.0 + hp_frac)
+	var hp_ratio: float = hp / max_hp if max_hp > 0.0 else 1.0
+	max_hp = new_max_hp
+	hp = max_hp * hp_ratio
+	if health_bar:
+		health_bar.set_ratio(hp / max_hp)
+
+
+## Cumulative weapon-damage bonus fraction at the current level (Prompt
+## Dasar cap: "Maksimal +8% weapon damage"). Applied as a multiplier in
+## _trigger_weapon.
+func mc_damage_bonus_mult() -> float:
+	var progress: float = float(mc_level - 1) / float(MC_MAX_LEVEL - 1)
+	return 1.0 + progress * MC_MAX_DAMAGE_BONUS_FRAC
+
+
+## Cumulative ability-cooldown reduction fraction at the current level
+## (Prompt Dasar cap: "Maksimal -15% ability cooldown").
+func mc_cooldown_reduction_mult() -> float:
+	var progress: float = float(mc_level - 1) / float(MC_MAX_LEVEL - 1)
+	return 1.0 - progress * MC_MAX_COOLDOWN_REDUCTION_FRAC
+
+
+## ---------------------------------------------------------------
+## Abilities (Prompt Dasar per-faction ability list; MVP4 acceptance
+## criterion: "Ability mempunyai cooldown, feedback, dan counterplay").
+## AURA-category abilities are always-on (scanned by nearby units, see
+## _refresh_aura_bonuses below) and never appear here; only active
+## categories are triggered through this entry point.
+## ---------------------------------------------------------------
+func get_ability_cooldown_remaining(ability_id: StringName) -> float:
+	return _ability_cooldowns.get(ability_id, 0.0)
+
+
+func can_use_ability(ability_id: StringName) -> bool:
+	if state == State.DEAD or state == State.DOWNED:
+		return false
+	return get_ability_cooldown_remaining(ability_id) <= 0.0
+
+
+func try_use_ability(ability_id: StringName, target_pos = null) -> bool:
+	var ability: AbilityData = null
+	for a in abilities:
+		if a.id == ability_id:
+			ability = a
+			break
+	if ability == null or ability.category == AbilityData.Category.AURA:
+		return false
+	if not can_use_ability(ability_id):
+		return false
+
+	match ability.category:
+		AbilityData.Category.ACTIVE_BURST:
+			_use_ability_burst(ability)
+		AbilityData.Category.ACTIVE_SELF_BUFF:
+			_use_ability_self_buff(ability)
+		AbilityData.Category.ACTIVE_SQUAD_BUFF:
+			_use_ability_squad_buff(ability)
+		AbilityData.Category.ACTIVE_AOE:
+			if target_pos == null:
+				return false
+			_use_ability_aoe(ability, target_pos)
+
+	_ability_cooldowns[ability_id] = ability.cooldown_sec * mc_cooldown_reduction_mult()
+	_log_event("%s used %s." % [display_name, ability.display_name])
+	return true
+
+
+func _use_ability_burst(ability: AbilityData) -> void:
+	var target: BwUnit = attack_target
+	if target == null or not is_instance_valid(target):
+		target = _find_nearest_enemy(acquire_range * 1.5)
+	if target == null:
+		return
+	var dmg: float = ability.damage_amount
+	if target.tier_label == "MC" or target.tier_label == "SPECIAL":
+		# Counterplay: cannot one-hit a MC/Special — cap so the target
+		# always keeps at least max_target_damage_cap_fraction of its HP.
+		var floor_hp: float = target.max_hp * ability.max_target_damage_cap_fraction
+		dmg = min(dmg, max(0.0, target.hp - floor_hp))
+	target.take_damage(dmg, self)
+
+
+func _use_ability_self_buff(ability: AbilityData) -> void:
+	temp_accuracy_bonus = ability.accuracy_bonus
+	_temp_buff_timer = ability.duration_sec
+
+
+func _use_ability_squad_buff(ability: AbilityData) -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var affected := 0
+	for n in tree.get_nodes_in_group("bw_units"):
+		if affected >= ability.max_targets:
+			break
+		if not (n is BwUnit) or not is_instance_valid(n) or n == self:
+			continue
+		var u: BwUnit = n
+		if u.faction_side != faction_side or u.state == State.DEAD or u.state == State.DOWNED:
+			continue
+		if global_position.distance_to(u.global_position) > ability.radius_px:
+			continue
+		# Not stackable: refresh rather than multiply if already active.
+		u.temp_damage_mult = ability.damage_mult
+		u._temp_buff_timer = ability.duration_sec
+		affected += 1
+
+
+func _use_ability_aoe(ability: AbilityData, target_pos: Vector2) -> void:
+	var w := WeaponData.new()
+	w.id = StringName("ability_weapon_%s" % ability.id)
+	w.display_name = ability.display_name
+	w.damage = ability.damage_amount
+	w.is_explosive = true
+	w.blast_radius_px = ability.radius_px
+	w.is_hitscan = false
+	w.projectile_speed_px = 260.0
+	w.range_px = 999999.0
+	_fire_projectile(w, target_pos)
+
+
+## Recomputes aura_accuracy_bonus/aura_suppression_resist_mult from any
+## nearby same-faction Main Character carrying an AURA-category ability.
+## Called once per physics frame; cheap at this game's unit-count scale
+## (roster cap 24-30).
+func _refresh_aura_bonuses() -> void:
+	aura_accuracy_bonus = 0.0
+	aura_suppression_resist_mult = 0.0
+	if tier_label == "MC" or tier_label == "VEHICLE":
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	for n in tree.get_nodes_in_group("bw_units"):
+		if not (n is BwUnit) or not is_instance_valid(n):
+			continue
+		var mc: BwUnit = n
+		if mc.tier_label != "MC" or mc.faction_side != faction_side:
+			continue
+		if mc.state == State.DEAD or mc.state == State.DOWNED:
+			continue
+		for a in mc.abilities:
+			if a.category != AbilityData.Category.AURA:
+				continue
+			if global_position.distance_to(mc.global_position) <= a.radius_px:
+				aura_accuracy_bonus = max(aura_accuracy_bonus, a.accuracy_bonus)
+				aura_suppression_resist_mult = max(aura_suppression_resist_mult, a.suppression_resist_mult)
+				if a.morale_bonus_per_sec > 0.0:
+					morale = min(100.0, morale + a.morale_bonus_per_sec * get_physics_process_delta_time())
 
 
 func downed_duration() -> float:
@@ -443,7 +675,10 @@ func take_damage(amount: float, attacker = null) -> void:
 			final_amount *= (1.0 - COVER_DAMAGE_REDUCTION)
 	if armor_weapon != null:
 		final_amount *= (1.0 - armor_weapon.armor_damage_reduction)
-	suppression = min(100.0, suppression + SUPPRESSION_PER_HIT)
+	final_amount *= (1.0 - synergy_armor_reduction)
+	var tier_resist: float = SPECIAL_TIER_SUPPRESSION_RESIST if (tier_label == "SPECIAL" or tier_label == "MC") else 0.0
+	var suppression_gain: float = SUPPRESSION_PER_HIT * (1.0 - aura_suppression_resist_mult) * (1.0 - synergy_suppression_resist_mult) * (1.0 - tier_resist)
+	suppression = min(100.0, suppression + suppression_gain)
 	if state == State.REVIVING or state == State.EXECUTING or state == State.RECRUITING or state == State.INTERACTING:
 		# Taking fire interrupts a channeled action (spec: execution "dapat dihentikan").
 		state = State.IDLE
@@ -508,6 +743,22 @@ func _die() -> void:
 ## ---------------------------------------------------------------
 func _physics_process(delta: float) -> void:
 	suppression = max(0.0, suppression - SUPPRESSION_DECAY_PER_SEC * delta)
+	_refresh_aura_bonuses()
+
+	if _temp_buff_timer > 0.0:
+		_temp_buff_timer -= delta
+		if _temp_buff_timer <= 0.0:
+			temp_damage_mult = 1.0
+			temp_accuracy_bonus = 0.0
+
+	if not _ability_cooldowns.is_empty():
+		var expired: Array = []
+		for k in _ability_cooldowns.keys():
+			_ability_cooldowns[k] = max(0.0, _ability_cooldowns[k] - delta)
+			if _ability_cooldowns[k] <= 0.0:
+				expired.append(k)
+		for k in expired:
+			_ability_cooldowns.erase(k)
 
 	if pending_vehicle_to_enter != null:
 		if not is_instance_valid(pending_vehicle_to_enter):
@@ -787,7 +1038,7 @@ func _finish_reload() -> void:
 
 func _effective_accuracy() -> float:
 	var penalty: float = clampf(suppression / 100.0 * MAX_SUPPRESSION_ACCURACY_PENALTY, 0.0, MAX_SUPPRESSION_ACCURACY_PENALTY)
-	return clampf(accuracy - penalty, 0.05, 0.99)
+	return clampf(accuracy - penalty + aura_accuracy_bonus + temp_accuracy_bonus, 0.05, 0.99)
 
 
 func _trigger_weapon(weapon: WeaponData, target_unit: BwUnit) -> void:
@@ -802,7 +1053,10 @@ func _trigger_weapon(weapon: WeaponData, target_unit: BwUnit) -> void:
 		_fire_projectile(weapon, target_unit.global_position)
 		return
 	if randf() <= _effective_accuracy():
-		target_unit.take_damage(weapon.damage, self)
+		var dmg: float = weapon.damage * temp_damage_mult * synergy_damage_mult
+		if tier_label == "MC":
+			dmg *= mc_damage_bonus_mult()
+		target_unit.take_damage(dmg, self)
 
 
 func _fire_projectile(weapon: WeaponData, impact_pos: Vector2) -> void:

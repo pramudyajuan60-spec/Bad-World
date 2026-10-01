@@ -13,6 +13,11 @@ signal money_changed(amount: int)
 signal recruitment_progress(tier: String, remaining_sec: float, total_sec: float)
 signal unit_recruited(tier: String)
 signal payroll_processed(paid: bool, total_due: int)
+## MVP4: Nabil's DEA Armory (Prompt Dasar "Nabil membuat senjata di
+## Armory menggunakan Parts").
+signal parts_changed(amount: int)
+signal crafting_progress(weapon_id: String, remaining_sec: float, total_sec: float)
+signal item_crafted(weapon_id: String)
 
 const PAYROLL_INTERVAL_SEC := 120.0
 ## Recruitment timer duration is not specified numerically by Prompt
@@ -22,6 +27,37 @@ const RECRUIT_TIME_BY_TIER := {"B1": 8.0, "B2": 12.0, "B3": 18.0}
 ## 1 in-fiction meter = 20px, used for safe-zone/Heat-style radii.
 const PIXELS_PER_METER := 20.0
 const SAFE_ZONE_RADIUS_M := 18.0
+
+## Armory (Nabil only; Prompt Dasar "SENJATA, INVENTORY, DAN AMUNISI").
+const ARMORY_PARTS_PER_TICK := 100
+const ARMORY_TICK_SEC := 90.0
+const ARMORY_MAX_PARTS := 1500
+## Prompt Dasar Parts costs; crafting time scales 5-18s with cost.
+const ARMORY_PARTS_COST := {
+	"weapon_pistol": 40, "weapon_smg": 70, "weapon_shotgun": 90,
+	"weapon_assault_rifle": 110, "weapon_sniper_rifle": 180,
+	"weapon_lmg": 220, "weapon_grenade": 30,
+}
+
+## Nabil's City Patrol income (Prompt Dasar "PATROL"). $110 per unit
+## per 60s baseline, reduced by nearby-patroller distance rules.
+const PATROL_BASE_INCOME_PER_MIN := 110.0
+const PATROL_MIN_IDLE_SEC := 15.0
+const PATROL_MAX_INCOME_UNITS_PER_SECTOR := 4
+## Sector size used only to group patrol income calculations; not a
+## real world-partition system (see docs/TECH_DECISIONS.md).
+const PATROL_SECTOR_SIZE_PX := 600.0
+
+## Nabil's "DEA response menjadi allied AI" (Prompt Dasar Campaign Nabil
+## section). Budgeted dispatch instead of hostile Heat/DEA waves.
+const ALLY_DISPATCH_COST := 300
+const ALLY_DISPATCH_COOLDOWN_SEC := 90.0
+
+var parts: int = 0
+var _armory_production_timer: float = 0.0
+var _armory_queue: Array = [] # [{weapon_id, remaining, total}]
+var _patrol_idle_time: Dictionary = {} # unit instance id -> seconds stood still while patrolling
+var _ally_dispatch_cooldown: float = 0.0
 
 var _combat_log: Node = null
 
@@ -69,6 +105,19 @@ func _load_unit_data() -> void:
 	unit_data_by_tier["B3"] = load("res://data/units/juan_b3.tres")
 
 
+## MVP4: overrides the Juan-only defaults above with the actual campaign
+## being played. Called once by open_world_map.gd after resolving
+## current_campaign. B1 key is omitted entirely for factions without it
+## (Nabil), so any UI that iterates unit_data_by_tier.keys() naturally
+## hides the B1 option without needing its own faction check.
+func configure_roster(campaign: CampaignData) -> void:
+	unit_data_by_tier.clear()
+	if campaign.b1_unit:
+		unit_data_by_tier["B1"] = campaign.b1_unit
+	unit_data_by_tier["B2"] = campaign.b2_unit
+	unit_data_by_tier["B3"] = campaign.b3_unit
+
+
 func set_money(amount: int) -> void:
 	money = amount
 	money_changed.emit(money)
@@ -106,6 +155,9 @@ func try_start_recruit(tier: String) -> bool:
 func _process(delta: float) -> void:
 	_advance_recruit_queue(delta)
 	_advance_payroll(delta)
+	_advance_armory(delta)
+	if _ally_dispatch_cooldown > 0.0:
+		_ally_dispatch_cooldown -= delta
 
 
 func _advance_recruit_queue(delta: float) -> void:
@@ -168,6 +220,87 @@ func is_position_safe(pos: Vector2) -> bool:
 		if pos.distance_to(p) <= radius_px:
 			return true
 	return false
+
+
+## --- Nabil's DEA Armory (Parts, not money) ---
+func try_start_craft(weapon_id: String) -> bool:
+	var cost: int = ARMORY_PARTS_COST.get(weapon_id, -1)
+	if cost < 0 or parts < cost:
+		return false
+	parts -= cost
+	parts_changed.emit(parts)
+	# Prompt Dasar: "Crafting membutuhkan waktu 5-18 detik tergantung
+	# item" — scaled linearly by Parts cost across the known 30-220 range.
+	var t: float = clampf(remap(float(cost), 30.0, 220.0, 5.0, 18.0), 5.0, 18.0)
+	_armory_queue.append({"weapon_id": weapon_id, "remaining": t, "total": t})
+	return true
+
+
+func _advance_armory(delta: float) -> void:
+	if parts < ARMORY_MAX_PARTS:
+		_armory_production_timer += delta
+		if _armory_production_timer >= ARMORY_TICK_SEC:
+			_armory_production_timer = 0.0
+			parts = min(ARMORY_MAX_PARTS, parts + ARMORY_PARTS_PER_TICK)
+			parts_changed.emit(parts)
+	if _armory_queue.is_empty():
+		return
+	var entry: Dictionary = _armory_queue[0]
+	entry["remaining"] -= delta
+	crafting_progress.emit(entry["weapon_id"], max(0.0, entry["remaining"]), entry["total"])
+	if entry["remaining"] <= 0.0:
+		_armory_queue.pop_front()
+		var wid: String = entry["weapon_id"]
+		gun_shop_inventory[wid] = gun_shop_inventory.get(wid, 0) + 1
+		item_crafted.emit(wid)
+
+
+## --- Nabil's City Patrol income (distance-efficiency rules) ---
+## Called once per frame by the owning scene with the current list of
+## Nabil units in State.PATROLLING. Units must stand/patrol at least
+## PATROL_MIN_IDLE_SEC before earning, per Prompt Dasar; income never
+## applies while fighting, at Bank, or at Recruitment (callers simply
+## don't pass those units in).
+func apply_patrol_income(delta: float, patrolling_units: Array) -> void:
+	var sectors: Dictionary = {} # Vector2i sector -> Array[BwUnit]
+	for u in patrolling_units:
+		if not is_instance_valid(u):
+			continue
+		var id: int = u.get_instance_id()
+		_patrol_idle_time[id] = _patrol_idle_time.get(id, 0.0) + delta
+		if _patrol_idle_time[id] < PATROL_MIN_IDLE_SEC:
+			continue
+		var sector := Vector2i(floori(u.global_position.x / PATROL_SECTOR_SIZE_PX), floori(u.global_position.y / PATROL_SECTOR_SIZE_PX))
+		if not sectors.has(sector):
+			sectors[sector] = []
+		sectors[sector].append(u)
+
+	var total_income := 0.0
+	for sector in sectors.keys():
+		var units: Array = sectors[sector]
+		for i in range(min(units.size(), PATROL_MAX_INCOME_UNITS_PER_SECTOR)):
+			var efficiency: float = 1.0
+			# Prompt Dasar distance rule, approximated per-sector by rank
+			# (1st full, 2nd 50%, 3rd+ 25% within the same crowded sector)
+			# since exact pairwise <8m/8-15m checks would need a full
+			# spatial query for a rule that only matters when units are
+			# clustered together in the same small area anyway.
+			if i == 1:
+				efficiency = 0.5
+			elif i >= 2:
+				efficiency = 0.25
+			total_income += (PATROL_BASE_INCOME_PER_MIN / 60.0) * delta * efficiency
+	if total_income > 0.0:
+		set_money(money + int(round(total_income)))
+
+
+## --- Nabil's allied DEA response dispatch (replaces hostile Heat/DEA) ---
+func try_dispatch_allies() -> bool:
+	if _ally_dispatch_cooldown > 0.0 or not can_afford(ALLY_DISPATCH_COST):
+		return false
+	spend(ALLY_DISPATCH_COST)
+	_ally_dispatch_cooldown = ALLY_DISPATCH_COOLDOWN_SEC
+	return true
 
 
 func _log_event(text: String) -> void:

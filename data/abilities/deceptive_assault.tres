@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ability_deceptive_assault"
+display_name = "Deceptive Assault"
+category = 2
+description = "Temporary accuracy/flank bonus for Zie after breaking from cover/concealment."
+counterplay_note = "Bonus is temporary (duration_sec) and has a real cooldown; an alert enemy that keeps distance or focuses fire during the window still threatens Zie normally once it expires."
+cooldown_sec = 30.0
+duration_sec = 8.0
+accuracy_bonus = 0.20

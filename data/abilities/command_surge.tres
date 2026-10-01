@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ability_command_surge"
+display_name = "Command Surge"
+category = 3
+description = "Buffs up to 8 nearby allies to 2x combat output for 15 seconds."
+counterplay_note = "Cannot be stacked (re-using while active only refreshes duration, never multiplies further); 75s cooldown and an 8-unit/radius_px cap mean it cannot buff an entire army at once, per Prompt Dasar (\"Jangan membuat kemampuan ini melukai seluruh squad secara instan tanpa counterplay\" — the equivalent restraint applied to a squad-wide buff)."
+cooldown_sec = 75.0
+duration_sec = 15.0
+radius_px = 320.0
+damage_mult = 2.0
+max_targets = 8

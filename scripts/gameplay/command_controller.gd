@@ -47,6 +47,11 @@ var _box_dragging: bool = false
 var _attack_move_armed: bool = false
 var _grenade_armed: bool = false
 var _recruit_armed: bool = false
+## MVP4: set by ability_bar.gd when an ACTIVE_AOE ability (e.g. Throw
+## Drug Bottle) is pressed; the next ground right-click triggers it
+## instead of a normal move order, mirroring the grenade-armed flow.
+var _ability_armed_id: StringName = &""
+var _ability_armed_caster: BwUnit = null
 
 const CLICK_VS_DRAG_THRESHOLD := 8.0
 const SELECT_PICK_RADIUS := 18.0
@@ -114,7 +119,17 @@ func _handle_double_click(pos: Vector2) -> void:
 		selection_manager.select_only(same)
 
 
+func arm_ability_targeting(ability_id: StringName, caster: BwUnit) -> void:
+	_ability_armed_id = ability_id
+	_ability_armed_caster = caster
+
+
 func _handle_right_click(pos: Vector2) -> void:
+	if _ability_armed_id != &"" and _ability_armed_caster != null and is_instance_valid(_ability_armed_caster):
+		_ability_armed_caster.try_use_ability(_ability_armed_id, pos)
+		_ability_armed_id = &""
+		_ability_armed_caster = null
+		return
 	if selection_manager.selected.is_empty():
 		return
 	var selected: Array = selection_manager.selected

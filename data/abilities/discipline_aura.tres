@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ability_discipline_aura"
+display_name = "Discipline Aura"
+category = 0
+description = "Passive aura: nearby DEA units gain accuracy and steadily recover morale while Nabil is alive and close."
+counterplay_note = "Only affects units within radius_px of Nabil; the bonus vanishes if Nabil is downed, dies, or the unit moves out of range."
+radius_px = 240.0
+accuracy_bonus = 0.06
+morale_bonus_per_sec = 4.0

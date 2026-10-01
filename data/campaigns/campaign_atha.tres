@@ -1,7 +1,17 @@
-[gd_resource type="Resource" load_steps=3 format=3]
+[gd_resource type="Resource" load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/campaign_data.gd" id="1"]
 [ext_resource type="Resource" path="res://data/factions/faction_nasion.tres" id="2"]
+[ext_resource type="Resource" path="res://data/units/atha_mc.tres" id="3"]
+[ext_resource type="Resource" path="res://data/units/atha_b1.tres" id="4"]
+[ext_resource type="Resource" path="res://data/units/atha_b2.tres" id="5"]
+[ext_resource type="Resource" path="res://data/units/atha_b3.tres" id="6"]
+[ext_resource type="Resource" path="res://data/units/special_shield_guardian.tres" id="7"]
+[ext_resource type="Resource" path="res://data/units/special_family_strategist.tres" id="8"]
+[ext_resource type="Resource" path="res://data/units/special_smuggler_chemist.tres" id="9"]
+[ext_resource type="Resource" path="res://data/abilities/command_surge.tres" id="10"]
+[ext_resource type="Resource" path="res://data/abilities/throw_drug_bottle.tres" id="11"]
+[ext_resource type="Resource" path="res://data/vehicles/compact.tres" id="12"]
 
 [resource]
 script = ExtResource("1")
@@ -14,3 +24,10 @@ story_path = "res://Assets/Campaign/Nasion Familia/Main Character/Story.txt"
 portrait_path = "res://Assets/Character Inspect/Atha.png"
 main_character_sprite_path = "res://Assets/Campaign/Nasion Familia/Main Character/Andrés A.Násion.png"
 concept_map_path = "res://Assets/Campaign/Nasion Familia/Maps/Atha Maps (Cartel).jpg"
+mc_unit = ExtResource("3")
+b1_unit = ExtResource("4")
+b2_unit = ExtResource("5")
+b3_unit = ExtResource("6")
+special_units = Array[Resource]([ExtResource("7"), ExtResource("8"), ExtResource("9")])
+abilities = Array[Resource]([ExtResource("10"), ExtResource("11")])
+starting_vehicle = ExtResource("12")

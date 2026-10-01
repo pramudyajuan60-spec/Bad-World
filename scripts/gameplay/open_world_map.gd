@@ -27,6 +27,9 @@ const BANK_SCRIPT := preload("res://scripts/economy/bank_building.gd")
 const GARAGE_SCRIPT := preload("res://scripts/economy/garage_building.gd")
 const PANEL_BUILDING_SCRIPT := preload("res://scripts/economy/panel_building.gd")
 const HEAT_MANAGER_SCRIPT := preload("res://scripts/economy/heat_manager.gd")
+const ARMORY_SCRIPT := preload("res://scripts/economy/armory_building.gd")
+const ARMORY_PANEL_SCRIPT := preload("res://scripts/ui/armory_panel.gd")
+const ABILITY_BAR_SCRIPT := preload("res://scripts/ui/ability_bar.gd")
 
 ## Open world bounds, large enough to fit 4 region HQs + Central City
 ## with real travel distance between them.
@@ -52,6 +55,15 @@ const OBSTACLE_RECTS := [
 	Rect2(-520, 120, 200, 220), Rect2(260, 200, 240, 180), Rect2(-70, -60, 160, 120),
 ]
 const OBSTACLE_LAYER := 2
+## Maps campaign id -> that faction's HQ region. Kept here rather than
+## on CampaignData since it's purely a world-layout concern of this one
+## scene (see docs/TECH_DECISIONS.md).
+const REGION_BY_CAMPAIGN := {
+	&"campaign_juan": Vector2(-2600, -1800), # Bellarosa, NW
+	&"campaign_fauzi": Vector2(2600, 1800),          # Vartieri, SE
+	&"campaign_atha": Vector2(-2600, 1800),          # Nasion, SW
+	&"campaign_nabil": Vector2(2600, -1800),         # DEA, NE
+}
 
 @onready var nav_region: NavigationRegion2D = $NavigationRegion2D
 @onready var obstacles_root: Node2D = $Obstacles
@@ -88,14 +100,51 @@ var _alert_panel: Control
 var _alert_label: Label
 var _combat_log: Node = null
 
+## MVP4: resolved once in _ready() from GameState.current_campaign_id.
+var current_campaign: CampaignData
+var current_faction: FactionData
+var player_hq_position: Vector2 = Vector2.ZERO
+var armory_building
+var armory_panel: Control
+var ability_bar: Control
+var _patrolling_nabil_cache: Array = []
+## Tracks currently-spawned player Special units (for Zie's Triad
+## Synergy check, and generally so specials aren't double-recruited).
+var special_unit_instances: Array = []
+var _recruited_special_ids: Array = []
+const TRIAD_SYNERGY_RADIUS_PX := 240.0 # 12m * 20px/m
+
 
 func _ready() -> void:
 	_combat_log = get_node_or_null("/root/CombatLog")
+
+	# Resolve which campaign to build for *before* any faction-specific
+	# construction happens. A save file's own campaign_id takes priority
+	# over whatever GameState.current_campaign_id currently holds — e.g.
+	# "Continue" from the Main Menu never explicitly sets it, so without
+	# this peek a Zie save would incorrectly build Juan's world/buildings
+	# before _load_from_slot corrected it too late (see docs/TECH_DECISIONS.md
+	# "Save/load must resolve the campaign before faction-specific setup").
+	var pending_slot := GameState.pending_load_slot
+	var loaded_save_data = null
+	if pending_slot >= 1 and SaveService.has_save(pending_slot):
+		loaded_save_data = SaveService.load_game(pending_slot)
+		if loaded_save_data != null and loaded_save_data.has("campaign_id"):
+			GameState.current_campaign_id = StringName(String(loaded_save_data["campaign_id"]))
+
+	current_campaign = CampaignDatabase.get_campaign(GameState.current_campaign_id)
+	if current_campaign == null:
+		current_campaign = CampaignDatabase.get_campaign(&"campaign_juan")
+	current_faction = current_campaign.faction
+	player_hq_position = REGION_BY_CAMPAIGN.get(current_campaign.id, REGION_BELLAROSA)
+
 	_build_navigation()
 	_build_obstacles()
 	camera.bounds = MAP_BOUNDS
 
-	economy.set_money(4000) # Juan's starting money, Prompt Dasar BALANCE V0.1
+	economy.set_money(current_campaign.starting_money)
+	economy.max_roster = current_faction.max_roster
+	economy.configure_roster(current_campaign)
 	_build_buildings()
 	economy.safe_zone_points = [BANK_POS, RECRUITMENT_POS]
 	economy.unit_recruited.connect(_on_unit_recruited)
@@ -124,10 +173,9 @@ func _ready() -> void:
 
 	_build_hud_extras()
 
-	var slot := GameState.pending_load_slot
 	GameState.pending_load_slot = -1
-	if slot >= 1 and SaveService.has_save(slot):
-		_load_from_slot(slot)
+	if loaded_save_data != null:
+		_apply_save_data(loaded_save_data)
 	else:
 		_spawn_fresh()
 
@@ -148,6 +196,48 @@ func _process(delta: float) -> void:
 		_minimap.queue_redraw()
 	if is_instance_valid(command_controller):
 		command_controller.vehicles_getter = Callable(self, "_get_all_vehicles")
+	if current_campaign.id == &"campaign_fauzi":
+		_update_triad_synergy()
+	if current_faction.uses_armory_instead_of_gun_shop:
+		_apply_nabil_patrol_income(delta)
+	if ability_bar:
+		ability_bar.refresh()
+
+
+## MVP4: Zie's Triad Synergy (Prompt Dasar "AKTIF jika ketiganya hidup
+## dan berada dalam radius 12 meter"). All-or-nothing: either every
+## alive-and-clustered special gets the full buff, or none do.
+func _update_triad_synergy() -> void:
+	var alive_specials: Array = special_unit_instances.filter(func(u): return is_instance_valid(u) and u.state != BwUnit.State.DEAD and u.state != BwUnit.State.DOWNED)
+	var active: bool = false
+	if alive_specials.size() == 3:
+		active = true
+		for i in range(3):
+			for j in range(i + 1, 3):
+				if alive_specials[i].global_position.distance_to(alive_specials[j].global_position) > TRIAD_SYNERGY_RADIUS_PX:
+					active = false
+	for u in special_unit_instances:
+		if not is_instance_valid(u):
+			continue
+		if active:
+			u.synergy_damage_mult = 1.20
+			u.synergy_armor_reduction = 0.15
+			u.synergy_suppression_resist_mult = 0.25
+		else:
+			u.synergy_damage_mult = 1.0
+			u.synergy_armor_reduction = 0.0
+			u.synergy_suppression_resist_mult = 0.0
+
+
+## MVP4: Nabil's City Patrol income. Only units actually in
+## State.PATROLLING earn (no income while fighting, at Bank, or at
+## Recruitment, per Prompt Dasar — those states are never PATROLLING).
+func _apply_nabil_patrol_income(delta: float) -> void:
+	var patrolling: Array = []
+	for u in units_root.get_children():
+		if u is BwUnit and is_instance_valid(u) and u.state == BwUnit.State.PATROLLING:
+			patrolling.append(u)
+	economy.apply_patrol_income(delta, patrolling)
 
 
 func _selected_or_first_carried_cargo() -> int:
@@ -214,13 +304,22 @@ func _build_obstacles() -> void:
 
 
 func _build_buildings() -> void:
-	# Region HQ markers: only Bellarosa is a functional base in this MVP;
-	# the other three are visual landmarks (Prompt Dasar names them all,
-	# but only Juan's campaign is playable — see docs/PLACEHOLDER_REGISTER.md).
-	_add_region_marker("Bellarosa Syndicate HQ", REGION_BELLAROSA, Color(0.2, 0.4, 0.9))
-	_add_region_marker("DEA Regional Field Office (PLACEHOLDER)", REGION_DEA, Color(0.7, 0.2, 0.2))
-	_add_region_marker("Nasion Familia HQ (PLACEHOLDER)", REGION_NASION, Color(0.6, 0.5, 0.1))
-	_add_region_marker("Vartieri Cartel HQ (PLACEHOLDER)", REGION_VARTIERI, Color(0.5, 0.2, 0.6))
+	# Region HQ markers: MVP4 activates all 4 campaigns, but a given
+	# playthrough is still single-player/single-faction (Prompt Dasar:
+	# choose one campaign from the menu). The chosen faction's own HQ
+	# gets its real name + a functional Factory; the other three remain
+	# visual landmarks for this session (no rival-faction AI yet — that
+	# is MVP5 scope) — see docs/PLACEHOLDER_REGISTER.md.
+	var hq_labels := {
+		&"campaign_juan": ["Bellarosa Syndicate HQ", REGION_BELLAROSA, Color(0.2, 0.4, 0.9)],
+		&"campaign_nabil": ["DEA Regional Field Office", REGION_DEA, Color(0.7, 0.2, 0.2)],
+		&"campaign_atha": ["Nasion Familia HQ", REGION_NASION, Color(0.6, 0.5, 0.1)],
+		&"campaign_fauzi": ["Vartieri Cartel HQ", REGION_VARTIERI, Color(0.5, 0.2, 0.6)],
+	}
+	for cid in hq_labels.keys():
+		var info: Array = hq_labels[cid]
+		var label: String = info[0] if cid == current_campaign.id else "%s (PLACEHOLDER)" % info[0]
+		_add_region_marker(label, info[1], info[2])
 	_add_region_marker("Central City", CENTRAL_CITY, Color(0.5, 0.5, 0.5))
 
 	bank = Area2D.new()
@@ -247,19 +346,33 @@ func _build_buildings() -> void:
 	_attach_label(recruitment_building, "Recruitment")
 	buildings_root.add_child(recruitment_building)
 
-	gun_shop_building = Area2D.new()
-	gun_shop_building.set_script(PANEL_BUILDING_SCRIPT)
-	gun_shop_building.building_label = "Gun Shop"
-	gun_shop_building.position = GUN_SHOP_POS
-	_attach_circle_shape(gun_shop_building, 90.0)
-	_attach_label(gun_shop_building, "Gun Shop")
-	buildings_root.add_child(gun_shop_building)
+	if current_faction.uses_armory_instead_of_gun_shop:
+		# Nabil crafts weapons from Parts instead of buying them (Prompt
+		# Dasar: "Nabil tidak membeli senjata biasa").
+		armory_building = Area2D.new()
+		armory_building.set_script(ARMORY_SCRIPT)
+		armory_building.position = GUN_SHOP_POS
+		_attach_circle_shape(armory_building, 90.0)
+		_attach_label(armory_building, "DEA Armory")
+		buildings_root.add_child(armory_building)
+	else:
+		gun_shop_building = Area2D.new()
+		gun_shop_building.set_script(PANEL_BUILDING_SCRIPT)
+		gun_shop_building.building_label = "Gun Shop"
+		gun_shop_building.position = GUN_SHOP_POS
+		_attach_circle_shape(gun_shop_building, 90.0)
+		_attach_label(gun_shop_building, "Gun Shop")
+		buildings_root.add_child(gun_shop_building)
 
 	factory = Area2D.new()
 	factory.set_script(FACTORY_SCRIPT)
-	factory.position = FACTORY_POS
+	factory.level = current_faction.starting_factory_level if current_faction.starting_factory_level > 0 else 1
+	factory.faction_side = &"player"
+	factory.value_mult = current_faction.factory_value_mult
+	factory.speed_mult = current_faction.factory_speed_mult
+	factory.position = player_hq_position + Vector2(300, 200)
 	_attach_circle_shape(factory, 80.0)
-	_attach_label(factory, "Bellarosa Factory")
+	_attach_label(factory, "%s Factory" % current_faction.display_name)
 	buildings_root.add_child(factory)
 
 	for i in range(4):
@@ -347,9 +460,31 @@ func _build_hud_extras() -> void:
 	alert_btn.pressed.connect(func(): _alert_panel.visible = not _alert_panel.visible)
 	button_row.add_child(alert_btn)
 
+	if current_faction.uses_armory_instead_of_gun_shop:
+		# Nabil's "DEA response menjadi allied AI beranggaran/cooldown":
+		# a manual, budgeted dispatch rather than a hostile Heat wave.
+		var dispatch_btn := Button.new()
+		dispatch_btn.text = "Dispatch Allies ($%d)" % economy.ALLY_DISPATCH_COST
+		dispatch_btn.pressed.connect(_on_dispatch_allies_pressed)
+		button_row.add_child(dispatch_btn)
+
+	var mc_upgrade_btn := Button.new()
+	mc_upgrade_btn.text = "Upgrade MC"
+	mc_upgrade_btn.pressed.connect(_on_mc_upgrade_pressed)
+	button_row.add_child(mc_upgrade_btn)
+
+	ability_bar = Control.new()
+	ability_bar.set_script(ABILITY_BAR_SCRIPT)
+	ability_bar.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	ability_bar.position = Vector2(20, -160)
+	ability_bar.get_main_character = Callable(self, "_get_main_character")
+	ability_bar.command_controller = command_controller
+	hud_layer.add_child(ability_bar)
+
 	recruitment_panel = PanelContainer.new()
 	recruitment_panel.set_script(RECRUITMENT_PANEL_SCRIPT)
 	recruitment_panel.economy = economy
+	recruitment_panel.map = self
 	recruitment_panel.set_anchors_preset(Control.PRESET_CENTER)
 	recruitment_panel.position = Vector2(-210, -160)
 	recruitment_panel.visible = false
@@ -357,15 +492,26 @@ func _build_hud_extras() -> void:
 	recruitment_panel.closed.connect(func(): recruitment_panel.visible = false)
 	recruitment_building.panel = recruitment_panel
 
-	gun_shop_panel = PanelContainer.new()
-	gun_shop_panel.set_script(GUN_SHOP_PANEL_SCRIPT)
-	gun_shop_panel.economy = economy
-	gun_shop_panel.set_anchors_preset(Control.PRESET_CENTER)
-	gun_shop_panel.position = Vector2(-240, -210)
-	gun_shop_panel.visible = false
-	hud_layer.add_child(gun_shop_panel)
-	gun_shop_panel.closed.connect(func(): gun_shop_panel.visible = false)
-	gun_shop_building.panel = gun_shop_panel
+	if current_faction.uses_armory_instead_of_gun_shop:
+		armory_panel = PanelContainer.new()
+		armory_panel.set_script(ARMORY_PANEL_SCRIPT)
+		armory_panel.economy = economy
+		armory_panel.set_anchors_preset(Control.PRESET_CENTER)
+		armory_panel.position = Vector2(-240, -210)
+		armory_panel.visible = false
+		hud_layer.add_child(armory_panel)
+		armory_panel.closed.connect(func(): armory_panel.visible = false)
+		armory_building.panel = armory_panel
+	else:
+		gun_shop_panel = PanelContainer.new()
+		gun_shop_panel.set_script(GUN_SHOP_PANEL_SCRIPT)
+		gun_shop_panel.economy = economy
+		gun_shop_panel.set_anchors_preset(Control.PRESET_CENTER)
+		gun_shop_panel.position = Vector2(-240, -210)
+		gun_shop_panel.visible = false
+		hud_layer.add_child(gun_shop_panel)
+		gun_shop_panel.closed.connect(func(): gun_shop_panel.visible = false)
+		gun_shop_building.panel = gun_shop_panel
 
 	inspect_panel = PanelContainer.new()
 	inspect_panel.set_script(INSPECT_PANEL_SCRIPT)
@@ -468,21 +614,33 @@ func _toggle_panel(panel: Control) -> void:
 ## Spawning
 ## ---------------------------------------------------------------
 func _spawn_fresh() -> void:
-	var juan := _make_unit(&"juan", "Juan Bellarosa", "MC", &"player", true)
-	juan.position = REGION_BELLAROSA + Vector2(-80, 40)
-	juan.equip_weapon("primary", economy.weapon_catalog["weapon_pistol"])
-	juan.equip_weapon("secondary", economy.weapon_catalog["weapon_knife"])
-	units_root.add_child(juan)
-	selection_manager.register_unit(juan)
+	var mc := _make_unit(current_campaign.id, current_campaign.main_character_name, "MC", &"player", true)
+	mc.position = player_hq_position + Vector2(-80, 40)
+	mc.abilities = current_campaign.abilities
+	mc.recruit_cost_multiplier = 0.8 if current_campaign.id == &"campaign_juan" else 1.0 # Juan's Master Manipulator: cheaper enemy-recruit conversion
+	mc.equip_weapon("primary", economy.weapon_catalog["weapon_pistol"])
+	mc.equip_weapon("secondary", economy.weapon_catalog["weapon_knife"])
+	units_root.add_child(mc)
+	selection_manager.register_unit(mc)
 
-	var b1_positions: Array = FormationUtils.compute_positions(REGION_BELLAROSA + Vector2(60, 40), 3, 40.0)
+	# Prompt Dasar starting rosters: Juan/Zie/Andrés spawn with 3xB1;
+	# Nabil (no B1 tier) spawns with 3xB2 instead.
+	var starting_tier: String = "B1" if current_faction.has_b1 else "B2"
+	var starting_positions: Array = FormationUtils.compute_positions(player_hq_position + Vector2(60, 40), 3, 40.0)
 	for i in range(3):
-		var b1 := _make_unit(&"b1_%d" % (i + 1), "B1", "B1", &"player", true)
-		b1.position = b1_positions[i]
-		units_root.add_child(b1)
-		selection_manager.register_unit(b1)
+		var u := _make_unit(&"start_%d" % (i + 1), starting_tier, starting_tier, &"player", true)
+		u.position = starting_positions[i]
+		units_root.add_child(u)
+		selection_manager.register_unit(u)
 
-	var enemy_positions: Array = FormationUtils.compute_positions(REGION_BELLAROSA + Vector2(520, -40), 4, 50.0)
+	if current_campaign.starting_vehicle:
+		var v = VEHICLE_SCENE.instantiate()
+		v.vehicle_data = current_campaign.starting_vehicle
+		v.faction_side = &"player"
+		v.position = player_hq_position + Vector2(-160, 140)
+		vehicles_root.add_child(v)
+
+	var enemy_positions: Array = FormationUtils.compute_positions(player_hq_position + Vector2(520, -40), 4, 50.0)
 	for i in range(4):
 		var e := _make_unit(&"enemy_%d" % (i + 1), "Hostile (PLACEHOLDER)", "ENEMY", &"enemy_dummy", false)
 		e.auto_defend = true
@@ -504,13 +662,15 @@ func _make_unit(id: StringName, name_: String, tier: String, side: StringName, m
 	u.economy = economy
 	match tier:
 		"MC":
-			u.unit_data = load("res://data/units/juan_mc.tres")
+			u.unit_data = current_campaign.mc_unit
 		"B1":
-			u.unit_data = load("res://data/units/juan_b1.tres")
+			u.unit_data = current_campaign.b1_unit
 		"B2":
-			u.unit_data = load("res://data/units/juan_b2.tres")
+			u.unit_data = current_campaign.b2_unit
 		"B3":
-			u.unit_data = load("res://data/units/juan_b3.tres")
+			u.unit_data = current_campaign.b3_unit
+		"SPECIAL":
+			pass # unit_data assigned by the caller (special_units are per-instance, not a single shared tier resource)
 		_:
 			u.max_hp = 90.0
 			u.accuracy = 0.5
@@ -543,14 +703,68 @@ func _on_unit_recruited(tier: String) -> void:
 		_combat_log.log_event("A new %s joined the roster." % tier)
 
 
+## MVP4: Special unit unlock/recruit (Prompt Dasar: "Special unlock dan
+## harga berfungsi", "Setiap special adalah unit unik, maksimal satu").
+## Locked until the Main Character reaches level 4; each special can
+## only be recruited once per campaign.
+func can_recruit_special(index: int) -> bool:
+	var mc = _get_main_character()
+	if mc == null or mc.mc_level < 4:
+		return false
+	if index in _recruited_special_ids:
+		return false
+	if index < 0 or index >= current_campaign.special_units.size():
+		return false
+	if economy.recruited_count >= economy.max_roster:
+		return false
+	var data: UnitData = current_campaign.special_units[index]
+	return economy.can_afford(data.recruit_price)
+
+
+func try_recruit_special(index: int) -> bool:
+	if not can_recruit_special(index):
+		return false
+	var data: UnitData = current_campaign.special_units[index]
+	if not economy.spend(data.recruit_price):
+		return false
+	var u := _make_unit(&"special_%d" % index, "SPECIAL", "SPECIAL", &"player", true)
+	u.unit_data = data
+	u.max_hp = data.base_hp
+	u.accuracy = data.base_accuracy
+	u.move_speed_px = data.move_speed * 60.0
+	u.hp = u.max_hp
+	u.position = RECRUITMENT_POS + Vector2(randf_range(-30, 30), randf_range(-30, 30))
+	units_root.add_child(u)
+	selection_manager.register_unit(u)
+	special_unit_instances.append(u)
+	u.special_index = index
+	_recruited_special_ids.append(index)
+	economy.recruited_count += 1
+	if _combat_log:
+		_combat_log.log_event("%s joined the roster (Special, unlocked at MC level 4)." % data.display_name)
+	return true
+
+
+func _get_main_character() -> BwUnit:
+	for u in units_root.get_children():
+		if u is BwUnit and is_instance_valid(u) and u.tier_label == "MC":
+			return u
+	return null
+
+
 func _on_recruit_completed(recruiter: BwUnit, target: BwUnit) -> void:
 	if not is_instance_valid(target) or target.faction_side == recruiter.faction_side:
+		return
+	if not current_faction.can_recruit_enemies:
+		if _combat_log:
+			_combat_log.log_event("Recruit failed: %s cannot recruit surrendered enemies." % current_faction.display_name)
 		return
 	if economy.recruited_count >= economy.max_roster:
 		if _combat_log:
 			_combat_log.log_event("Recruit failed: roster is full.")
 		return
-	var cost: int = int(economy.unit_data_by_tier["B1"].recruit_price / 2.0)
+	var base_price_unit: UnitData = current_campaign.b1_unit if current_campaign.b1_unit else current_campaign.b2_unit
+	var cost: int = int(base_price_unit.recruit_price / 2.0 * recruiter.recruit_cost_multiplier)
 	if not economy.spend(cost):
 		if _combat_log:
 			_combat_log.log_event("Recruit failed: not enough money ($%d needed)." % cost)
@@ -618,12 +832,51 @@ func _handle_interact() -> void:
 	if recruitment_building.has_player_in_range():
 		recruitment_building.toggle_panel()
 		return
-	if gun_shop_building.has_player_in_range():
+	if current_faction.uses_armory_instead_of_gun_shop:
+		if armory_building.has_player_in_range():
+			armory_building.toggle_panel()
+			return
+	elif gun_shop_building.has_player_in_range():
 		gun_shop_building.toggle_panel()
 		return
 	if unit.global_position.distance_to(garage.global_position) <= 90.0:
 		if not garage.try_repair():
 			garage_panel.visible = not garage_panel.visible
+
+
+func _on_dispatch_allies_pressed() -> void:
+	if not economy.try_dispatch_allies():
+		if _combat_log:
+			_combat_log.log_event("Ally dispatch failed: insufficient budget or on cooldown.")
+		return
+	var spawn_pos: Vector2 = player_hq_position + Vector2(-400, 0)
+	var dea_campaign: CampaignData = current_campaign
+	for i in range(2):
+		var u := _make_unit(&"ally_dispatch_%d_%d" % [Time.get_ticks_msec(), i], "Allied DEA Agent", "B2", &"player", true)
+		u.position = spawn_pos + Vector2(i * 40, 0)
+		u.equip_weapon("primary", economy.weapon_catalog["weapon_assault_rifle"])
+		u.primary_reserve = 999
+		u.auto_defend = true
+		units_root.add_child(u)
+		selection_manager.register_unit(u)
+	if _combat_log:
+		_combat_log.log_event("Dispatched 2 allied DEA agents to engage the nearest cartel threat.")
+
+
+func _on_mc_upgrade_pressed() -> void:
+	var mc := _get_main_character()
+	if mc == null:
+		return
+	var cost: int = mc.mc_upgrade_cost()
+	if cost < 0:
+		if _combat_log:
+			_combat_log.log_event("%s is already at max level." % mc.display_name)
+		return
+	if not economy.spend(cost):
+		if _combat_log:
+			_combat_log.log_event("Cannot afford MC upgrade ($%d needed)." % cost)
+		return
+	mc.mc_upgrade()
 
 
 func _on_vehicle_buy_requested(vehicle_id: String) -> void:
@@ -655,6 +908,8 @@ func _get_player_center() -> Vector2:
 
 
 func _check_combat_heat() -> void:
+	if current_faction.uses_armory_instead_of_gun_shop:
+		return # Nabil's own response is allied-AI dispatch, not hostile Heat — see _handle_interact/try_dispatch_allies.
 	for e in enemies_root.get_children():
 		if e is BwUnit and is_instance_valid(e) and e.state == BwUnit.State.ATTACKING:
 			heat_manager.notify_combat_tick()
@@ -669,10 +924,12 @@ func _on_dea_wave_dispatched(wave_number: int) -> void:
 	var spawn_pos: Vector2 = heat_manager.pick_spawn_point()
 	if _combat_log:
 		_combat_log.log_event("DEA response wave %d inbound." % wave_number)
+	var dea_campaign: CampaignData = CampaignDatabase.get_campaign(&"campaign_nabil")
 	var b2_count: int = 4 if wave_number == 1 else 0
 	var b3_count: int = 1 if wave_number == 1 else 2
 	for i in range(b2_count):
 		var u := _make_unit(&"dea_b2_%d_%d" % [wave_number, i], "DEA Responder (PLACEHOLDER)", "B2", &"enemy_dea", false)
+		u.unit_data = dea_campaign.b2_unit # always DEA's own stats, regardless of which campaign is currently playing
 		u.auto_defend = true
 		u.equip_weapon("primary", economy.weapon_catalog["weapon_assault_rifle"])
 		u.primary_reserve = 999
@@ -680,6 +937,7 @@ func _on_dea_wave_dispatched(wave_number: int) -> void:
 		enemies_root.add_child(u)
 	for i in range(b3_count):
 		var u := _make_unit(&"dea_b3_%d_%d" % [wave_number, i], "DEA Commander (PLACEHOLDER)", "B3", &"enemy_dea", false)
+		u.unit_data = dea_campaign.b3_unit
 		u.auto_defend = true
 		u.equip_weapon("primary", economy.weapon_catalog["weapon_lmg"])
 		u.primary_reserve = 999
@@ -747,6 +1005,7 @@ func _gather_save_data() -> Dictionary:
 		"factory_hp": factory.hp,
 		"factory_cargo": factory.stored_cargo,
 		"heat_waves_dispatched": heat_manager.waves_dispatched,
+		"parts": economy.parts,
 	}
 
 
@@ -763,6 +1022,7 @@ func _serialize_unit(u: BwUnit) -> Dictionary:
 		"armor_weapon": String(u.armor_weapon.id) if u.armor_weapon else "",
 		"is_recruitable_tier": u.is_recruitable_tier, "can_move": u.can_move,
 		"carried_cargo": u.carried_cargo, "carried_cash": u.carried_cash,
+		"mc_level": u.mc_level, "special_index": u.special_index,
 	}
 
 
@@ -776,17 +1036,14 @@ func _on_load() -> void:
 	get_tree().reload_current_scene()
 
 
-func _load_from_slot(slot: int) -> void:
-	var data = SaveService.load_game(slot)
-	if data == null:
-		_spawn_fresh()
-		return
+func _apply_save_data(data: Dictionary) -> void:
 	if data.has("campaign_id"):
 		GameState.current_campaign_id = StringName(String(data["campaign_id"]))
 	if data.has("difficulty_id"):
 		GameState.current_difficulty_id = StringName(String(data["difficulty_id"]))
 	economy.set_money(int(data.get("money", 4000)))
 	economy.recruited_count = int(data.get("recruited_count", 0))
+	economy.parts = int(data.get("parts", 0))
 	var saved_inventory = data.get("gun_shop_inventory", null)
 	if saved_inventory is Dictionary:
 		for k in saved_inventory.keys():
@@ -808,6 +1065,12 @@ func _load_from_slot(slot: int) -> void:
 		u.is_recruitable_tier = bool(ud.get("is_recruitable_tier", false))
 		u.carried_cargo = int(ud.get("carried_cargo", 0))
 		u.carried_cash = int(ud.get("carried_cash", 0))
+		var loaded_special_index: int = int(ud.get("special_index", -1))
+		if loaded_special_index >= 0:
+			u.special_index = loaded_special_index
+			u.unit_data = current_campaign.special_units[loaded_special_index]
+			special_unit_instances.append(u)
+			_recruited_special_ids.append(loaded_special_index)
 		var primary_id: String = ud.get("primary_weapon", "")
 		if primary_id != "" and economy.weapon_catalog.has(primary_id):
 			u.equip_weapon("primary", economy.weapon_catalog[primary_id])
@@ -832,6 +1095,10 @@ func _load_from_slot(slot: int) -> void:
 			u.died.connect(_on_enemy_died.bind(u))
 		var saved_state: int = int(ud.get("state", BwUnit.State.IDLE))
 		var saved_hp: float = float(ud.get("hp", u.max_hp))
+		var loaded_mc_level: int = int(ud.get("mc_level", 1))
+		if loaded_mc_level > 1:
+			u.mc_level = loaded_mc_level
+			u.call_deferred("_apply_mc_level_bonuses")
 		if saved_state == BwUnit.State.DOWNED and saved_hp <= 0.0:
 			u.call_deferred("_enter_downed")
 			u.call_deferred("set", "downed_timer", float(ud.get("downed_timer", 30.0)))

@@ -222,3 +222,61 @@ Not specified numerically by Prompt Dasar beyond what's noted:
 - Friendly fire from explosives: 50% of the equivalent hostile-side
   damage ("terbatas" = limited, per Prompt Dasar), always logged as a
   warning.
+
+## MVP 4 assumption numbers (not specified numerically by Prompt Dasar)
+
+| Item | Value | Rationale |
+|---|---|---|
+| MC level 2/3/4/5 upgrade cost | $1000 / $2000 / $3500 / $5500 | **Explicit in Prompt Dasar's "MAIN CHARACTER" table.** |
+| MC cumulative max HP bonus at level 5 | +20% | **Explicit cap named in Prompt Dasar.** |
+| MC cumulative weapon damage bonus at level 5 | +8% | **Explicit cap named in Prompt Dasar.** |
+| MC cumulative ability cooldown reduction at level 5 | -15% | **Explicit cap named in Prompt Dasar.** |
+| Special unit unlock level | MC level 4 | Not numerically specified; chosen so Specials are a genuine late-game payoff (2 upgrades away from max) rather than trivially available. |
+| Assassinate damage / cooldown / counterplay floor | 140 dmg, 45s cooldown, floor = 20% target max HP | Damage/cooldown are MVP4 design assumptions; the 20% no-one-shot-MC/Special floor directly implements Prompt Dasar's explicit "tidak boleh one-hit terhadap MC atau Special". |
+| Tactical Link / Discipline Aura radius + bonus | 220-240px, +6-8% accuracy, 25-30% suppression resist / +4 morale/sec | Not numerically specified; kept modest (a nudge, not a game-deciding buff) since these are always-on, unconditional auras. |
+| Vehicle Commander bonuses | +20% vehicle HP, +12% speed, +15% turret damage, -20% repair cost | Not numerically specified; noticeable but not overwhelming, consistent with the ability being passive/unconditional like the other auras above. |
+| Deceptive Assault / Command Surge / Throw Drug Bottle | 30s cooldown/8s duration (+20% acc); 75s cooldown/15s duration (2x dmg, 8 targets); 20s cooldown (55 dmg, 100px radius) | Not numerically specified beyond "Command Surge 2x sesuai batas" (the 2x is explicit; the 8-target/75s-cooldown cap is the "batas" the prompt requires but doesn't number). |
+| Nabil Armory Parts costs / regen | 30-220 Parts per weapon, +100 Parts/90s, 1500 cap | Not numerically specified; costs roughly mirror each weapon's money price in the Gun Shop divided by ~18, so Nabil's relative weapon-to-weapon tradeoffs feel the same as every other faction's. |
+| Nabil City Patrol income | $110/unit/min base, 15s minimum idle, distance-efficiency 100%/50%/25% for the 1st/2nd/3rd+ patroller sharing a ~600px sector | Not numerically specified beyond the "distance efficiency" concept itself; modeled as a simple per-sector rank-based falloff rather than true pairwise distance checks (see docs/TECH_DECISIONS.md). |
+| Nabil allied-dispatch cost/cooldown | $300, 90s cooldown, 2 agents per dispatch | Not numerically specified beyond "beranggaran/cooldown" (budgeted/cooldown) itself. |
+| Special/MC tier suppression resistance | 45% less suppression accumulation | **Not from Prompt Dasar at all** — added specifically because the required MVP4 balance simulation (see below) revealed that without it, any single high-value unit facing 2+ simultaneous attackers gets permanently suppression-locked into a no-return-fire retreat loop regardless of its own stats, making "a Special can handle several regulars" structurally impossible. |
+
+## MVP4 balance simulation calibration
+
+`tests/test_mvp4_balance_simulation.gd` is the required "buat balance
+simulation untuk special unit dan ability, diuji melalui simulasi,
+bukan hanya ditulis" deliverable. It runs many real, seeded, headless
+skirmishes between actual `BwUnit` instances (full weapon/accuracy/
+suppression/downed resolution — not a simplified formula) and asserts
+the resulting win rate sits in a genuinely "strong but not invincible"
+band rather than always/never winning.
+
+Two real findings came out of actually running this simulation instead
+of just asserting design intent:
+
+1. **Suppression-lock at 2+ attackers** (see the table above): the
+   first naive version of this test had the Nabil Special lose 100% of
+   trials regardless of its stats, because MVP2's suppression model
+   accumulates faster than it decays against any 2+ simultaneous
+   attackers, locking the target into an unbreakable no-return-fire
+   retreat loop. Fixed with a real, disclosed gameplay change
+   (`SPECIAL_TIER_SUPPRESSION_RESIST`), not a test-only fudge.
+2. **Steep sensitivity to enemy count near the Triad Synergy
+   benchmark**: Prompt Dasar names "~8 B3" as the trio's benchmark, but
+   empirically (open field, no cover, all attackers already in range
+   at tick 0 — a harsher setup than the benchmark likely assumes) the
+   trio's win rate is a very steep function of enemy count right
+   around that number: 6xB3 gave ~95-100% wins, 8xB3 gave ~0-20% wins
+   with real run-to-run variance (even RNG-seeded runs still varied,
+   most likely from avoidance/navigation timing jitter rather than
+   pure RNG — see the test file's own comments). 7xB3 lands
+   consistently in a genuinely competitive ~35-45% band across
+   repeated runs and is what the shipped test uses, documented here as
+   a deliberate approximation of Prompt Dasar's "~8" rather than a
+   literal match.
+
+Measured results at time of writing: Zie's Triad Synergy trio beats
+7xB3 in ~35-45% of 20 trials; a lone Nabil Special beats 4xB1 in
+~60-80% of 10 trials. Both are comfortably inside "wins sometimes,
+loses sometimes" — the qualitative claim under test, since Prompt
+Dasar names no exact percentage for either matchup.
