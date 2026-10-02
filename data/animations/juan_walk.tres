@@ -1,0 +1,70 @@
+[gd_resource type="SpriteFrames" load_steps=18 format=3 uid="uid://d831a58a7f303"]
+
+[ext_resource type="Texture2D" path="res://Assets/Campaign/Bellarosa Syndicate/Spritsheet/Juan Bellarosa/PERGERAKAN DAN KONDISI KARAKTER.png" id="1"]
+
+[sub_resource type="AtlasTexture" id="a2"]
+texture = ExtResource("1")
+region = Rect2(173, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a3"]
+texture = ExtResource("1")
+region = Rect2(208, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a4"]
+texture = ExtResource("1")
+region = Rect2(275, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a5"]
+texture = ExtResource("1")
+region = Rect2(333, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a6"]
+texture = ExtResource("1")
+region = Rect2(471, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a7"]
+texture = ExtResource("1")
+region = Rect2(541, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a8"]
+texture = ExtResource("1")
+region = Rect2(610, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a9"]
+texture = ExtResource("1")
+region = Rect2(675, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a10"]
+texture = ExtResource("1")
+region = Rect2(805, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a11"]
+texture = ExtResource("1")
+region = Rect2(880, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a12"]
+texture = ExtResource("1")
+region = Rect2(949, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a13"]
+texture = ExtResource("1")
+region = Rect2(1023, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a14"]
+texture = ExtResource("1")
+region = Rect2(1190, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a15"]
+texture = ExtResource("1")
+region = Rect2(1265, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a16"]
+texture = ExtResource("1")
+region = Rect2(1336, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="a17"]
+texture = ExtResource("1")
+region = Rect2(1406, 95, 44, 57)
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("a2")},{"duration": 1.0, "texture": SubResource("a3")},{"duration": 1.0, "texture": SubResource("a4")},{"duration": 1.0, "texture": SubResource("a5")}], "loop": true, "name": &"walk_se", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a6")},{"duration": 1.0, "texture": SubResource("a7")},{"duration": 1.0, "texture": SubResource("a8")},{"duration": 1.0, "texture": SubResource("a9")}], "loop": true, "name": &"walk_sw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a10")},{"duration": 1.0, "texture": SubResource("a11")},{"duration": 1.0, "texture": SubResource("a12")},{"duration": 1.0, "texture": SubResource("a13")}], "loop": true, "name": &"walk_ne", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a14")},{"duration": 1.0, "texture": SubResource("a15")},{"duration": 1.0, "texture": SubResource("a16")},{"duration": 1.0, "texture": SubResource("a17")}], "loop": true, "name": &"walk_nw", "speed": 8.0}]

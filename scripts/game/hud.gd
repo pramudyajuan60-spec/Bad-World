@@ -1,0 +1,56 @@
+extends CanvasLayer
+## MVP 1 HUD: selection info, hints, pause panel, flash messages.
+
+var _flash_label: Label
+var _flash_tween: Tween
+
+
+func _ready() -> void:
+	_flash_label = $Flash
+	($PausePanel as Control).visible = false
+
+
+func update_selection(selected: Array) -> void:
+	var info: Label = $SelectionInfo
+	if selected.is_empty():
+		info.text = "No selection"
+	else:
+		var names: Array = []
+		for u in selected:
+			names.append("%s (%d HP)" % [u.unit_name, int(u.hp)])
+		info.text = "%d selected: %s" % [selected.size(), ", ".join(names)]
+
+
+func flash(text: String) -> void:
+	_flash_label.text = text
+	_flash_label.modulate.a = 1.0
+	if _flash_tween and _flash_tween.is_valid():
+		_flash_tween.kill()
+	_flash_tween = create_tween()
+	_flash_tween.tween_interval(1.2)
+	_flash_tween.tween_property(_flash_label, "modulate:a", 0.0, 0.6)
+
+
+func _on_resume_pressed() -> void:
+	get_parent()._toggle_pause()
+
+
+func _on_restart_pressed() -> void:
+	get_parent().restart()
+
+
+func _on_quit_to_menu_pressed() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+
+
+func _on_save_pressed() -> void:
+	SaveSystem.save_game(get_parent(), "quicksave")
+	flash("Game saved.")
+
+
+func _on_load_pressed() -> void:
+	if SaveSystem.load_game(get_parent(), "quicksave"):
+		flash("Game loaded.")
+	else:
+		flash("No save found.")

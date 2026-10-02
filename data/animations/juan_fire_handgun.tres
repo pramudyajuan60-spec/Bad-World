@@ -1,0 +1,22 @@
+[gd_resource type="SpriteFrames" load_steps=6 format=3 uid="uid://b41d4f21bdb4e"]
+
+[ext_resource type="Texture2D" path="res://Assets/Campaign/Bellarosa Syndicate/Spritsheet/Juan Bellarosa/SEMUA SENJATA API.png" id="1"]
+
+[sub_resource type="AtlasTexture" id="a2"]
+texture = ExtResource("1")
+region = Rect2(564, 53, 49, 95)
+
+[sub_resource type="AtlasTexture" id="a3"]
+texture = ExtResource("1")
+region = Rect2(641, 50, 55, 98)
+
+[sub_resource type="AtlasTexture" id="a4"]
+texture = ExtResource("1")
+region = Rect2(749, 51, 92, 97)
+
+[sub_resource type="AtlasTexture" id="a5"]
+texture = ExtResource("1")
+region = Rect2(848, 50, 53, 98)
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("a2")}], "loop": true, "name": &"fire_handgun_se", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a3")}], "loop": true, "name": &"fire_handgun_sw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a4")}], "loop": true, "name": &"fire_handgun_ne", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a5")}], "loop": true, "name": &"fire_handgun_nw", "speed": 8.0}]

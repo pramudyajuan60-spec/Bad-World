@@ -1,0 +1,78 @@
+[gd_resource type="SpriteFrames" load_steps=20 format=3 uid="uid://8cb77c053fe8a"]
+
+[ext_resource type="Texture2D" path="res://Assets/Campaign/Bellarosa Syndicate/Spritsheet/B1/Char 1/PERGERAKAN DAN KONDISI KARAKTER.png" id="1"]
+
+[sub_resource type="AtlasTexture" id="a2"]
+texture = ExtResource("1")
+region = Rect2(157, 319, 28, 47)
+
+[sub_resource type="AtlasTexture" id="a3"]
+texture = ExtResource("1")
+region = Rect2(188, 320, 29, 46)
+
+[sub_resource type="AtlasTexture" id="a4"]
+texture = ExtResource("1")
+region = Rect2(219, 320, 30, 46)
+
+[sub_resource type="AtlasTexture" id="a5"]
+texture = ExtResource("1")
+region = Rect2(250, 320, 30, 47)
+
+[sub_resource type="AtlasTexture" id="a6"]
+texture = ExtResource("1")
+region = Rect2(284, 320, 30, 47)
+
+[sub_resource type="AtlasTexture" id="a7"]
+texture = ExtResource("1")
+region = Rect2(335, 320, 28, 46)
+
+[sub_resource type="AtlasTexture" id="a8"]
+texture = ExtResource("1")
+region = Rect2(367, 320, 31, 46)
+
+[sub_resource type="AtlasTexture" id="a9"]
+texture = ExtResource("1")
+region = Rect2(399, 320, 30, 46)
+
+[sub_resource type="AtlasTexture" id="a10"]
+texture = ExtResource("1")
+region = Rect2(435, 321, 30, 45)
+
+[sub_resource type="AtlasTexture" id="a11"]
+texture = ExtResource("1")
+region = Rect2(466, 321, 30, 45)
+
+[sub_resource type="AtlasTexture" id="a12"]
+texture = ExtResource("1")
+region = Rect2(498, 321, 29, 45)
+
+[sub_resource type="AtlasTexture" id="a13"]
+texture = ExtResource("1")
+region = Rect2(540, 325, 30, 41)
+
+[sub_resource type="AtlasTexture" id="a14"]
+texture = ExtResource("1")
+region = Rect2(574, 325, 28, 41)
+
+[sub_resource type="AtlasTexture" id="a15"]
+texture = ExtResource("1")
+region = Rect2(604, 325, 29, 42)
+
+[sub_resource type="AtlasTexture" id="a16"]
+texture = ExtResource("1")
+region = Rect2(637, 326, 28, 40)
+
+[sub_resource type="AtlasTexture" id="a17"]
+texture = ExtResource("1")
+region = Rect2(667, 326, 29, 40)
+
+[sub_resource type="AtlasTexture" id="a18"]
+texture = ExtResource("1")
+region = Rect2(699, 326, 27, 40)
+
+[sub_resource type="AtlasTexture" id="a19"]
+texture = ExtResource("1")
+region = Rect2(728, 326, 29, 40)
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("a2")},{"duration": 1.0, "texture": SubResource("a3")},{"duration": 1.0, "texture": SubResource("a4")},{"duration": 1.0, "texture": SubResource("a5")},{"duration": 1.0, "texture": SubResource("a6")}], "loop": true, "name": &"walk_se", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a7")},{"duration": 1.0, "texture": SubResource("a8")},{"duration": 1.0, "texture": SubResource("a9")},{"duration": 1.0, "texture": SubResource("a10")},{"duration": 1.0, "texture": SubResource("a11")}], "loop": true, "name": &"walk_sw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a12")},{"duration": 1.0, "texture": SubResource("a13")},{"duration": 1.0, "texture": SubResource("a14")},{"duration": 1.0, "texture": SubResource("a15")}], "loop": true, "name": &"walk_ne", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a16")},{"duration": 1.0, "texture": SubResource("a17")},{"duration": 1.0, "texture": SubResource("a18")},{"duration": 1.0, "texture": SubResource("a19")}], "loop": true, "name": &"walk_nw", "speed": 8.0}]

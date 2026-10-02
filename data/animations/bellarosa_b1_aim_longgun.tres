@@ -1,0 +1,38 @@
+[gd_resource type="SpriteFrames" load_steps=10 format=3 uid="uid://bddd4bfec2b1f"]
+
+[ext_resource type="Texture2D" path="res://Assets/Campaign/Bellarosa Syndicate/Spritsheet/B1/Char 1/SEMUA SENJATA API.png" id="1"]
+
+[sub_resource type="AtlasTexture" id="a2"]
+texture = ExtResource("1")
+region = Rect2(15, 473, 47, 77)
+
+[sub_resource type="AtlasTexture" id="a3"]
+texture = ExtResource("1")
+region = Rect2(15, 557, 46, 81)
+
+[sub_resource type="AtlasTexture" id="a4"]
+texture = ExtResource("1")
+region = Rect2(62, 472, 50, 78)
+
+[sub_resource type="AtlasTexture" id="a5"]
+texture = ExtResource("1")
+region = Rect2(60, 558, 52, 80)
+
+[sub_resource type="AtlasTexture" id="a6"]
+texture = ExtResource("1")
+region = Rect2(110, 472, 55, 78)
+
+[sub_resource type="AtlasTexture" id="a7"]
+texture = ExtResource("1")
+region = Rect2(109, 558, 54, 80)
+
+[sub_resource type="AtlasTexture" id="a8"]
+texture = ExtResource("1")
+region = Rect2(207, 472, 43, 78)
+
+[sub_resource type="AtlasTexture" id="a9"]
+texture = ExtResource("1")
+region = Rect2(159, 558, 41, 80)
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("a2")},{"duration": 1.0, "texture": SubResource("a3")}], "loop": true, "name": &"aim_longgun_se", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a4")},{"duration": 1.0, "texture": SubResource("a5")}], "loop": true, "name": &"aim_longgun_sw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a6")},{"duration": 1.0, "texture": SubResource("a7")}], "loop": true, "name": &"aim_longgun_ne", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("a8")},{"duration": 1.0, "texture": SubResource("a9")}], "loop": true, "name": &"aim_longgun_nw", "speed": 8.0}]

@@ -1,0 +1,39 @@
+{
+ "sheet": "Assets/Campaign/Bellarosa Syndicate/Spritsheet/Juan Bellarosa/SEMUA SENJATA API.png",
+ "unit": "juan",
+ "anim": "fire_handgun",
+ "dirs": {
+  "se": [
+   [
+    564,
+    53,
+    613,
+    148
+   ]
+  ],
+  "sw": [
+   [
+    641,
+    50,
+    696,
+    148
+   ]
+  ],
+  "ne": [
+   [
+    749,
+    51,
+    841,
+    148
+   ]
+  ],
+  "nw": [
+   [
+    848,
+    50,
+    901,
+    148
+   ]
+  ]
+ }
+}

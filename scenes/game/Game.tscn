@@ -1,0 +1,92 @@
+[gd_scene load_steps=5 format=3 uid="uid://badworldgame1"]
+
+[ext_resource type="Script" path="res://scripts/game/game.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/rts_camera.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/game/hud.gd" id="3"]
+
+[node name="Game" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1")
+
+[node name="RTSCamera" type="Camera2D" parent="."]
+position = Vector2(-1000, 750)
+zoom = Vector2(0.9, 0.9)
+script = ExtResource("2")
+
+[node name="SelectBox" type="Line2D" parent="."]
+visible = false
+default_color = Color(0.4, 1, 0.5, 0.9)
+width = 2.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("3")
+
+[node name="Hint" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 900.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 15
+
+[node name="SelectionInfo" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = -48.0
+offset_right = 900.0
+offset_bottom = -16.0
+anchors_preset = 10
+anchor_top = 1.0
+anchor_bottom = 1.0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 15
+
+[node name="Flash" type="Label" parent="HUD"]
+offset_left = -300.0
+offset_top = 120.0
+offset_right = 300.0
+offset_bottom = 160.0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+grow_horizontal = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+modulate = Color(1, 1, 1, 0)
+
+[node name="PausePanel" type="PanelContainer" parent="HUD"]
+visible = false
+offset_left = -220.0
+offset_top = -180.0
+offset_right = 220.0
+offset_bottom = 180.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="HUD/PausePanel"]
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="HUD/PausePanel/VBox"]
+text = "PAUSED"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="Resume" type="Button" parent="HUD/PausePanel/VBox"]
+text = "Resume"
+[node name="Save" type="Button" parent="HUD/PausePanel/VBox"]
+text = "Save (F5)"
+[node name="Load" type="Button" parent="HUD/PausePanel/VBox"]
+text = "Load (F9)"
+[node name="Restart" type="Button" parent="HUD/PausePanel/VBox"]
+text = "Restart"
+[node name="Quit" type="Button" parent="HUD/PausePanel/VBox"]
+text = "Quit to Menu"
+
+[connection signal="pressed" from="HUD/PausePanel/VBox/Resume" to="HUD" method="_on_resume_pressed"]
+[connection signal="pressed" from="HUD/PausePanel/VBox/Save" to="HUD" method="_on_save_pressed"]
+[connection signal="pressed" from="HUD/PausePanel/VBox/Load" to="HUD" method="_on_load_pressed"]
+[connection signal="pressed" from="HUD/PausePanel/VBox/Restart" to="HUD" method="_on_restart_pressed"]
+[connection signal="pressed" from="HUD/PausePanel/VBox/Quit" to="HUD" method="_on_quit_to_menu_pressed"]

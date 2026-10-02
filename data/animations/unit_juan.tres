@@ -1,0 +1,152 @@
+[gd_resource type="SpriteFrames" load_steps=38 format=3 uid="uid://e30a3a5ea6fe8"]
+
+[ext_resource type="Texture2D" path="res://Assets/Campaign/Bellarosa Syndicate/Spritsheet/Juan Bellarosa/PERGERAKAN DAN KONDISI KARAKTER.png" id="1"]
+
+[ext_resource type="Texture2D" path="res://Assets/Campaign/Bellarosa Syndicate/Spritsheet/Juan Bellarosa/SEMUA SENJATA API.png" id="2"]
+
+[sub_resource type="AtlasTexture" id="s2"]
+texture = ExtResource("1")
+region = Rect2(172, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s3"]
+texture = ExtResource("1")
+region = Rect2(220, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s4"]
+texture = ExtResource("1")
+region = Rect2(264, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s5"]
+texture = ExtResource("1")
+region = Rect2(305, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s6"]
+texture = ExtResource("1")
+region = Rect2(470, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s7"]
+texture = ExtResource("1")
+region = Rect2(513, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s8"]
+texture = ExtResource("1")
+region = Rect2(559, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s9"]
+texture = ExtResource("1")
+region = Rect2(597, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s10"]
+texture = ExtResource("1")
+region = Rect2(800, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s11"]
+texture = ExtResource("1")
+region = Rect2(841, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s12"]
+texture = ExtResource("1")
+region = Rect2(883, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s13"]
+texture = ExtResource("1")
+region = Rect2(924, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s14"]
+texture = ExtResource("1")
+region = Rect2(1187, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s15"]
+texture = ExtResource("1")
+region = Rect2(1230, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s16"]
+texture = ExtResource("1")
+region = Rect2(1282, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s17"]
+texture = ExtResource("1")
+region = Rect2(1326, 18, 48, 60)
+
+[sub_resource type="AtlasTexture" id="s18"]
+texture = ExtResource("1")
+region = Rect2(173, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s19"]
+texture = ExtResource("1")
+region = Rect2(208, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s20"]
+texture = ExtResource("1")
+region = Rect2(275, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s21"]
+texture = ExtResource("1")
+region = Rect2(333, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s22"]
+texture = ExtResource("1")
+region = Rect2(471, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s23"]
+texture = ExtResource("1")
+region = Rect2(541, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s24"]
+texture = ExtResource("1")
+region = Rect2(610, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s25"]
+texture = ExtResource("1")
+region = Rect2(675, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s26"]
+texture = ExtResource("1")
+region = Rect2(805, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s27"]
+texture = ExtResource("1")
+region = Rect2(880, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s28"]
+texture = ExtResource("1")
+region = Rect2(949, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s29"]
+texture = ExtResource("1")
+region = Rect2(1023, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s30"]
+texture = ExtResource("1")
+region = Rect2(1190, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s31"]
+texture = ExtResource("1")
+region = Rect2(1265, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s32"]
+texture = ExtResource("1")
+region = Rect2(1336, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s33"]
+texture = ExtResource("1")
+region = Rect2(1406, 95, 44, 57)
+
+[sub_resource type="AtlasTexture" id="s34"]
+texture = ExtResource("2")
+region = Rect2(564, 53, 49, 95)
+
+[sub_resource type="AtlasTexture" id="s35"]
+texture = ExtResource("2")
+region = Rect2(641, 50, 55, 98)
+
+[sub_resource type="AtlasTexture" id="s36"]
+texture = ExtResource("2")
+region = Rect2(749, 51, 92, 97)
+
+[sub_resource type="AtlasTexture" id="s37"]
+texture = ExtResource("2")
+region = Rect2(848, 50, 53, 98)
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("s2")},{"duration": 1.0, "texture": SubResource("s3")},{"duration": 1.0, "texture": SubResource("s4")},{"duration": 1.0, "texture": SubResource("s5")}], "loop": true, "name": &"idle_se", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s6")},{"duration": 1.0, "texture": SubResource("s7")},{"duration": 1.0, "texture": SubResource("s8")},{"duration": 1.0, "texture": SubResource("s9")}], "loop": true, "name": &"idle_sw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s10")},{"duration": 1.0, "texture": SubResource("s11")},{"duration": 1.0, "texture": SubResource("s12")},{"duration": 1.0, "texture": SubResource("s13")}], "loop": true, "name": &"idle_ne", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s14")},{"duration": 1.0, "texture": SubResource("s15")},{"duration": 1.0, "texture": SubResource("s16")},{"duration": 1.0, "texture": SubResource("s17")}], "loop": true, "name": &"idle_nw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s18")},{"duration": 1.0, "texture": SubResource("s19")},{"duration": 1.0, "texture": SubResource("s20")},{"duration": 1.0, "texture": SubResource("s21")}], "loop": true, "name": &"walk_se", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s22")},{"duration": 1.0, "texture": SubResource("s23")},{"duration": 1.0, "texture": SubResource("s24")},{"duration": 1.0, "texture": SubResource("s25")}], "loop": true, "name": &"walk_sw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s26")},{"duration": 1.0, "texture": SubResource("s27")},{"duration": 1.0, "texture": SubResource("s28")},{"duration": 1.0, "texture": SubResource("s29")}], "loop": true, "name": &"walk_ne", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s30")},{"duration": 1.0, "texture": SubResource("s31")},{"duration": 1.0, "texture": SubResource("s32")},{"duration": 1.0, "texture": SubResource("s33")}], "loop": true, "name": &"walk_nw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s34")}], "loop": true, "name": &"attack_se", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s35")}], "loop": true, "name": &"attack_sw", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s36")}], "loop": true, "name": &"attack_ne", "speed": 8.0},{"frames": [{"duration": 1.0, "texture": SubResource("s37")}], "loop": true, "name": &"attack_nw", "speed": 8.0}]
