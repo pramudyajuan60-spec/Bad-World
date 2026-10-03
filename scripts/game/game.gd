@@ -30,6 +30,14 @@ var morale: float = 100.0  # 0..100, affects accuracy
 var payroll_timer: float = 120.0
 const PAYROLL_INTERVAL: float = 120.0
 var missed_payrolls: int = 0
+# --- MVP 3c: heat & DEA ---
+var heat: float = 0.0  # 0..100
+var _dea_war_timer: float = 0.0  # time at high heat with combat
+var _dea_travel_timer: float = 0.0
+var _dea_spawned: bool = false
+const HEAT_WAR_THRESHOLD := 60.0
+const DEA_WAR_TIME := 120.0
+const DEA_TRAVEL_TIME := 60.0
 
 @onready var _camera: RTSCamera = $RTSCamera
 @onready var _select_box: Line2D = $SelectBox
@@ -47,8 +55,52 @@ func _process(delta: float) -> void:
 	# Morale recovers slowly when paid.
 	if missed_payrolls == 0 and morale < 100.0:
 		morale = minf(100.0, morale + delta * 2.0)
+	# Heat decays slowly.
+	heat = maxf(0.0, heat - delta * 0.5)
+	# DEA response logic.
+	_update_dea(delta)
 	# Refresh economy HUD (payroll countdown ticks).
 	_hud.update_economy(money, morale, payroll_timer)
+	_hud.update_heat(heat, _dea_spawned)
+
+
+func add_heat(amount: float) -> void:
+	heat = minf(100.0, heat + amount)
+
+
+func _update_dea(delta: float) -> void:
+	if _dea_spawned:
+		return
+	if heat >= HEAT_WAR_THRESHOLD:
+		_dea_war_timer += delta
+		if _dea_war_timer >= DEA_WAR_TIME:
+			# war long enough; DEA now traveling
+			_dea_travel_timer += delta
+			if int(_dea_travel_timer) % 10 == 0 and _dea_travel_timer > 1.0:
+				# periodic warning (avoid spam: only on 10s boundaries)
+				pass
+			if _dea_travel_timer >= DEA_TRAVEL_TIME:
+				_spawn_dea_raid()
+	else:
+		_dea_war_timer = maxf(0.0, _dea_war_timer - delta * 2.0)
+
+
+func _spawn_dea_raid() -> void:
+	_dea_spawned = true
+	_hud.flash("DEA RAID INCOMING!", true)
+	# Spawn at map edge, NOT on top of player (acceptance criterion).
+	var spawn := Vector2(1400, -1000)  # NE corner, far from player base SW
+	for i in 4:
+		var u := _spawn_unit("DEA-%d" % (i + 1), B1_FRAMES,
+			spawn + Vector2(i * 50, (i % 2) * 50), true, {
+				"max_hp": 170.0, "weapon_id": &"rifle",
+				"unit_tier": 2, "salary": 0,
+			})
+		u.modulate = Color(0.3, 0.5, 1.0)  # blue tint for DEA
+	# Order them to attack-move toward player base.
+	for u in _units:
+		if u.unit_name.begins_with("DEA-"):
+			u.order_attack_move(Vector2(-1100, 900))
 
 
 func _total_salary() -> int:
@@ -712,6 +764,7 @@ func _cargo_sell_or_deposit() -> void:
 			if int(res["sold"]) > 0:
 				u.carried_cargo -= int(res["sold"])
 				u.carried_cash += int(res["cash"])
+				add_heat(5.0)  # drug dealing attracts attention
 				_hud.flash("Sold %d cargo for $%d (carried)" % [int(res["sold"]), int(res["cash"])])
 				did_something = true
 	if not did_something:
@@ -897,6 +950,11 @@ func _on_unit_died(unit: RTSUnit) -> void:
 	# prune from groups
 	for k in _groups:
 		(_groups[k] as Array).erase(unit)
+	# Killing generates heat (more for DEA kills by player).
+	if unit.is_enemy:
+		add_heat(8.0)
+	else:
+		add_heat(3.0)
 
 
 # ------------------------------------------------------------------ pause

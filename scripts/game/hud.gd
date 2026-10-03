@@ -46,6 +46,19 @@ func set_vehicle_info(v: Vehicle) -> void:
 		v.carried_cargo, v.vdata.cargo_capacity]
 
 
+func update_heat(heat: float, dea_active: bool) -> void:
+	var label: Label = $HeatInfo
+	if dea_active:
+		label.text = "DEA ACTIVE!"
+		label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+	elif heat >= 60.0:
+		label.text = "HEAT %d%% - LAY LOW!" % int(heat)
+		label.add_theme_color_override("font_color", Color(1, 0.6, 0.2))
+	else:
+		label.text = "Heat %d%%" % int(heat)
+		label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+
+
 func flash(text: String, warning := false) -> void:
 	_flash_label.text = text
 	_flash_label.modulate = Color(1, 0.4, 0.4, 1) if warning else Color(1, 1, 1, 1)
