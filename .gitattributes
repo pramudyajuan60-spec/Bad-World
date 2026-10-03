@@ -1,0 +1,6 @@
+# Binary-heavy asset repo: keep line-ending handling off images.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.txt text eol=lf
+*.md text eol=lf

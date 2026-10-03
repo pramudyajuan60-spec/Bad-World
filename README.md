@@ -39,13 +39,13 @@ godot4 --headless --path . --script res://tools/validate_asset_manifest.gd
 godot4 --headless --path . --script res://tests/test_campaign_data.gd
 ```
 
-All three currently pass. See docs/TEST_PLAN.md for exact expected
-output.
+See docs/TEST_PLAN.md for exact expected output.
 
 ## Documentation
 
 - `docs/REPO_AUDIT.md` — commit confirmation, asset inventory summary,
   known naming/asset mismatches.
+- `docs/ASSET_INVENTORY.md` — source-art inventory snapshot and path hazards.
 - `docs/ASSET_MANIFEST.md` — full generated per-file asset catalog.
 - `docs/TECH_DECISIONS.md` — engine/version/renderer/layout choices.
 - `docs/ARCHITECTURE.md` — module breakdown and stable ID conventions.
@@ -67,3 +67,13 @@ data/                   Data-driven Resource instances (campaigns, factions, dif
 tools/, tests/          Asset-manifest tooling and headless smoke tests
 docs/                   Project documentation (see above)
 ```
+
+## Asset handling
+
+- Do not modify or delete original assets destructively; keep derived crops,
+  placeholders, and processed output in separate directories.
+- Many asset names contain spaces or commas, repeated basenames occur across
+  folders, and `Spritsheet/` is the historical on-disk spelling. Quote paths
+  in scripts and consult `docs/ASSET_INVENTORY.md` before referring to assets.
+- The four `Main Character/Story.txt` files contain canonical Indonesian lore;
+  do not rewrite them when building campaign presentation.

@@ -14,3 +14,12 @@ __pycache__/
 
 # Hoplite session/attachment workspace, not project content
 .hoplite/
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+*.log
