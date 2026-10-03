@@ -38,6 +38,14 @@ func update_economy(money: int, morale: float, payroll_in: float) -> void:
 	label.text = "$%d | %s | Payroll %ds" % [money, morale_str, int(payroll_in)]
 
 
+func set_vehicle_info(v: Vehicle) -> void:
+	var info: Label = $SelectionInfo
+	info.text = "%s | HP %d/%d | Seats %d/%d | Cargo %d/%d" % [
+		v.vdata.display_name, int(v.hp), int(v.vdata.max_hp),
+		v.passengers.size(), v.vdata.seat_capacity,
+		v.carried_cargo, v.vdata.cargo_capacity]
+
+
 func flash(text: String, warning := false) -> void:
 	_flash_label.text = text
 	_flash_label.modulate = Color(1, 0.4, 0.4, 1) if warning else Color(1, 1, 1, 1)

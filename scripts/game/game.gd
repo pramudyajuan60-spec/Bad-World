@@ -15,6 +15,8 @@ var selection_dragging: bool = false  # read by RTSCamera to pause edge-pan
 
 var _units: Array[RTSUnit] = []
 var _selected: Array[RTSUnit] = []
+var _vehicles: Array[Vehicle] = []
+var _selected_vehicles: Array[Vehicle] = []
 var _groups: Dictionary = {}  # int -> Array[RTSUnit]
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_current: Vector2 = Vector2.ZERO
@@ -167,6 +169,8 @@ func _build_map() -> void:
 	_spawn_recruit_building(Vector2(-1250, 950))
 	# MVP 2e: Gun shop near recruitment
 	_spawn_gun_shop(Vector2(-1050, 950))
+	# MVP 3b: Garage
+	_spawn_garage(Vector2(-850, 1050))
 	# MVP 2f: Safe zone covering player base (recruit + gun shop)
 	var sz := SafeZone.new()
 	sz.position = Vector2(-1150, 950)
@@ -314,6 +318,49 @@ func _spawn_gun_shop(pos: Vector2) -> void:
 	add_child(s)
 
 
+func _spawn_garage(pos: Vector2) -> void:
+	var g := StaticBody2D.new()
+	g.add_to_group("garage")
+	g.position = pos
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(120, 90)
+	shape.shape = rect
+	g.add_child(shape)
+	g.add_child(_make_building_visual(Vector2(120, 90),
+		Color(0.4, 0.4, 0.55, 0.95), "GARAGE"))
+	add_child(g)
+
+
+func spawn_vehicle(vehicle_id: StringName, pos: Vector2) -> Vehicle:
+	var data := VehiclesDB.get_vehicle(vehicle_id)
+	var v := Vehicle.new()
+	v.setup(data)
+	# build required child nodes
+	var nav := NavigationAgent2D.new()
+	nav.name = "NavigationAgent2D"
+	v.add_child(nav)
+	var col := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = 24.0
+	col.shape = circle
+	v.add_child(col)
+	var ring := Node2D.new()
+	ring.name = "SelectionRing"
+	ring.set_script(load("res://scripts/game/selection_ring.gd"))
+	v.add_child(ring)
+	v.position = pos
+	add_child(v)
+	_vehicles.append(v)
+	v.destroyed.connect(_on_vehicle_destroyed)
+	return v
+
+
+func _on_vehicle_destroyed(v: Vehicle) -> void:
+	_vehicles.erase(v)
+	_selected_vehicles.erase(v)
+
+
 func _on_recruit_complete(tier: int, building: RecruitBuilding) -> void:
 	var data: Dictionary = RecruitBuilding.RECRUIT_DATA[tier]
 	var spawn_pos: Vector2 = building.position + Vector2(100, 0)
@@ -404,7 +451,23 @@ func _end_drag(mouse_px: Vector2, additive: bool) -> void:
 		_box_select(Rect2(_drag_start, end - _drag_start).abs(), additive)
 
 
+func _clear_unit_selection() -> void:
+	for u in _selected:
+		u.set_selected(false)
+	_selected.clear()
+
+
 func _click_select(world_pos: Vector2, additive: bool) -> void:
+	# Vehicles first (they're bigger targets).
+	var v := _vehicle_at(world_pos)
+	if v != null:
+		_clear_unit_selection()
+		for sv in _selected_vehicles:
+			sv.set_selected(false)
+		_selected_vehicles = [v]
+		v.set_selected(true)
+		_update_hud()
+		return
 	var u := _unit_at(world_pos)
 	var now := Time.get_ticks_msec()
 	if u != null and not u.is_enemy:
@@ -463,6 +526,9 @@ func _select_only(units: Array) -> void:
 	for u in _selected:
 		u.set_selected(false)
 	_selected.clear()
+	for v in _selected_vehicles:
+		v.set_selected(false)
+	_selected_vehicles.clear()
 	for u in units:
 		_selected.append(u)
 		u.set_selected(true)
@@ -485,10 +551,23 @@ func _unit_at(world_pos: Vector2) -> RTSUnit:
 	for u in _units:
 		if u.state == RTSUnit.State.DEAD:
 			continue
+		if not u.visible:  # boarded units can't be clicked
+			continue
 		var d: float = u.global_position.distance_to(world_pos)
 		if d < best_d:
 			best_d = d
 			best = u
+	return best
+
+
+func _vehicle_at(world_pos: Vector2) -> Vehicle:
+	var best: Vehicle = null
+	var best_d := 44.0
+	for v in _vehicles:
+		var d: float = v.global_position.distance_to(world_pos)
+		if d < best_d:
+			best_d = d
+			best = v
 	return best
 
 
@@ -503,6 +582,12 @@ func _update_select_box() -> void:
 # ------------------------------------------------------------------ orders
 
 func _issue_right_click(world_pos: Vector2, queued: bool) -> void:
+	# Vehicle selected: order move.
+	if not _selected_vehicles.is_empty():
+		for v in _selected_vehicles:
+			v.order_move(world_pos)
+		_flash_marker(world_pos, Color(0.4, 0.6, 1.0))
+		return
 	if _selected.is_empty():
 		return
 	var clicked := _unit_at(world_pos)
@@ -634,6 +719,69 @@ func _cargo_sell_or_deposit() -> void:
 	_update_hud()
 
 
+func _try_buy_vehicle(vehicle_id: StringName) -> void:
+	if get_tree().get_nodes_in_group("garage").is_empty():
+		_hud.flash("No garage!", true)
+		return
+	var data := VehiclesDB.get_vehicle(vehicle_id)
+	if money < data.price:
+		_hud.flash("Not enough money! Need $%d" % data.price, true)
+		return
+	money -= data.price
+	var garage := get_tree().get_nodes_in_group("garage")[0] as Node2D
+	spawn_vehicle(vehicle_id, garage.global_position + Vector2(0, 100))
+	_hud.flash("Bought %s!" % data.display_name)
+	_update_hud()
+
+
+func _vehicle_enter_exit() -> void:
+	# If vehicles selected: disembark. Else: selected units board nearest vehicle.
+	if not _selected_vehicles.is_empty():
+		for v in _selected_vehicles:
+			v.disembark(self)
+		_hud.flash("Disembarked.")
+		return
+	if _selected.is_empty():
+		return
+	var boarded := 0
+	for u in _selected:
+		var v := _nearest_in_group(u.global_position, "vehicles", 120.0) as Vehicle
+		if v != null and v.board(u):
+			boarded += 1
+	if boarded > 0:
+		# remove boarded units from selection
+		_selected = _selected.filter(func(u): return u.visible)
+		_hud.flash("Boarded %d units" % boarded)
+	else:
+		_hud.flash("No vehicle nearby", true)
+	_update_hud()
+
+
+func _vehicle_repair() -> void:
+	if _selected_vehicles.is_empty():
+		return
+	var repaired := 0
+	for v in _selected_vehicles:
+		var garage := _nearest_in_group(v.global_position, "garage", 200.0)
+		if garage == null:
+			continue
+		var missing: float = v.vdata.max_hp - v.hp
+		if missing <= 0.0:
+			continue
+		var cost: int = int(missing * 0.5)  # $0.5 per HP
+		if money < cost:
+			_hud.flash("Can't afford repair ($%d)" % cost, true)
+			continue
+		money -= cost
+		v.hp = v.vdata.max_hp
+		repaired += 1
+	if repaired > 0:
+		_hud.flash("Repaired %d vehicle(s)" % repaired)
+	else:
+		_hud.flash("Move vehicle near garage to repair", true)
+	_update_hud()
+
+
 func _handle_hotkey(ev: InputEventKey) -> void:
 	match ev.keycode:
 		KEY_S:
@@ -673,6 +821,18 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			_cargo_pickup()
 		KEY_X:
 			_cargo_sell_or_deposit()
+		KEY_E:
+			_vehicle_enter_exit()
+		KEY_P:
+			_vehicle_repair()
+		KEY_F4:
+			_try_buy_vehicle(&"utility")
+		KEY_F6:
+			_try_buy_vehicle(&"suv")
+		KEY_F7:
+			_try_buy_vehicle(&"guntruck")
+		KEY_F8:
+			_try_buy_vehicle(&"apc")
 		KEY_F5:
 			SaveSystem.save_game(self, "quicksave")
 			_hud.flash("Saved.")
@@ -755,6 +915,10 @@ func restart() -> void:
 func _update_hud() -> void:
 	_hud.update_selection(_selected)
 	_hud.update_economy(money, morale, payroll_timer)
+	# Vehicle info in selection panel if vehicles selected.
+	if not _selected_vehicles.is_empty():
+		var v: Vehicle = _selected_vehicles[0]
+		_hud.set_vehicle_info(v)
 
 
 # ------------------------------------------------------------------ save
