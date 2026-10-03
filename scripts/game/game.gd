@@ -93,7 +93,8 @@ func _ready() -> void:
 	_hud.get_node("Hint").text = (
 		"LMB: select | Shift+LMB: add | Drag: box | Double-click: select type\n"
 		+ "RMB: move | A+RMB: attack-move | S: stop | D: defend | R: reload\n"
-		+ "F1/F2/F3: recruit B1/B2/B3 | Ctrl+1..9 / 1..9: groups | Esc: pause")
+		+ "F1/F2/F3: recruit | C: load cargo | X: sell/deposit\n"
+		+ "Shift+1..6: buy weapon | G: grenade | V: vest | T: ammo | Esc: pause")
 
 
 func _build_map() -> void:
@@ -171,6 +172,78 @@ func _build_map() -> void:
 	sz.position = Vector2(-1150, 950)
 	sz.radius = 280.0
 	add_child(sz)
+	# MVP 3: economy buildings
+	_spawn_economy()
+
+
+func _make_building_visual(size: Vector2, color: Color, label_text: String) -> Node2D:
+	var root := Node2D.new()
+	var vis := Polygon2D.new()
+	vis.polygon = PackedVector2Array([
+		Vector2(-size.x / 2, -size.y / 2), Vector2(size.x / 2, -size.y / 2),
+		Vector2(size.x / 2, size.y / 2), Vector2(-size.x / 2, size.y / 2)])
+	vis.color = color
+	root.add_child(vis)
+	var label := Label.new()
+	label.text = label_text
+	label.position = Vector2(-size.x / 2 + 8, -10)
+	label.add_theme_font_size_override("font_size", 13)
+	root.add_child(label)
+	return root
+
+
+func _spawn_economy() -> void:
+	# Factories: one per cartel (Bellarosa=player SW, Vartieri NW, Nasion SE, DEA NE)
+	var factory_spots := {
+		"bellarosa": Vector2(-1350, 700),
+		"vartieri": Vector2(-1350, -700),
+		"nasion": Vector2(1350, 700),
+		"dea": Vector2(1350, -700),
+	}
+	for faction in factory_spots:
+		var f := Factory.new()
+		f.position = factory_spots[faction]
+		f.faction = faction
+		if faction == "nasion":
+			f.level = 2  # Andres starts with L2 factory (BALANCE.md)
+		var shape := CollisionShape2D.new()
+		var rect := RectangleShape2D.new()
+		rect.size = Vector2(140, 110)
+		shape.shape = rect
+		f.add_child(shape)
+		f.add_child(_make_building_visual(Vector2(140, 110),
+			Color(0.5, 0.35, 0.2, 0.95), "FACTORY " + faction.to_upper()))
+		add_child(f)
+	# Bank (player base)
+	var bank := Bank.new()
+	bank.position = Vector2(-950, 1050)
+	var bshape := CollisionShape2D.new()
+	var brect := RectangleShape2D.new()
+	brect.size = Vector2(100, 80)
+	bshape.shape = brect
+	bank.add_child(bshape)
+	bank.add_child(_make_building_visual(Vector2(100, 80),
+		Color(0.25, 0.5, 0.35, 0.95), "BANK"))
+	add_child(bank)
+	# 4 drug dealers in Central City
+	var dealer_names := ["Dealer Marco", "Dealer Sari", "Dealer Volkov", "Dealer ???"]
+	var dealer_spots := [Vector2(-150, -100), Vector2(150, -100),
+		Vector2(-150, 150), Vector2(150, 150)]
+	for i in 4:
+		var d := DrugDealer.new()
+		d.position = dealer_spots[i]
+		d.dealer_name = dealer_names[i]
+		if i == 3:
+			d.is_placeholder = true
+		var dshape := CollisionShape2D.new()
+		var drekt := RectangleShape2D.new()
+		drekt.size = Vector2(60, 60)
+		dshape.shape = drekt
+		d.add_child(dshape)
+		var dcol := Color(0.6, 0.25, 0.6, 0.95) if not d.is_placeholder else Color(0.4, 0.4, 0.4, 0.7)
+		d.add_child(_make_building_visual(Vector2(60, 60), dcol,
+			"D" + str(i + 1)))
+		add_child(d)
 	# MVP 2 cover points (sandbags/crates): directional, don't block LoS
 	var cover_spots: Array[Vector2] = [
 		Vector2(-700, 500), Vector2(-300, 600), Vector2(100, 400),
@@ -503,6 +576,64 @@ func _try_recruit(tier: int) -> void:
 		_update_hud()
 
 
+func _nearest_in_group(pos: Vector2, group: String, max_dist: float) -> Node:
+	var best: Node = null
+	var best_d := max_dist
+	for n in get_tree().get_nodes_in_group(group):
+		var d: float = pos.distance_to((n as Node2D).global_position)
+		if d < best_d:
+			best_d = d
+			best = n
+	return best
+
+
+func _cargo_pickup() -> void:
+	if _selected.is_empty():
+		return
+	var loaded := 0
+	for u in _selected:
+		var f := _nearest_in_group(u.global_position, "factories", 160.0) as Factory
+		if f == null or f.destroyed or f.faction != "bellarosa":
+			continue
+		var space: int = u.MAX_CARGO - u.carried_cargo
+		if space <= 0:
+			continue
+		var got: int = f.take_cargo(space)
+		u.carried_cargo += got
+		loaded += got
+	if loaded > 0:
+		_hud.flash("Loaded %d cargo" % loaded)
+	else:
+		_hud.flash("No cargo: move near your factory", true)
+	_update_hud()
+
+
+func _cargo_sell_or_deposit() -> void:
+	if _selected.is_empty():
+		return
+	# Try deposit at bank first.
+	var did_something := false
+	for u in _selected:
+		var bank := _nearest_in_group(u.global_position, "bank", 160.0)
+		if bank != null and u.carried_cash > 0:
+			money += u.carried_cash
+			_hud.flash("Deposited $%d" % u.carried_cash)
+			u.carried_cash = 0
+			did_something = true
+			continue
+		var dealer := _nearest_in_group(u.global_position, "dealers", 160.0) as DrugDealer
+		if dealer != null and u.carried_cargo > 0:
+			var res: Dictionary = dealer.sell_cargo(u.carried_cargo)
+			if int(res["sold"]) > 0:
+				u.carried_cargo -= int(res["sold"])
+				u.carried_cash += int(res["cash"])
+				_hud.flash("Sold %d cargo for $%d (carried)" % [int(res["sold"]), int(res["cash"])])
+				did_something = true
+	if not did_something:
+		_hud.flash("Nothing to sell/deposit here", true)
+	_update_hud()
+
+
 func _handle_hotkey(ev: InputEventKey) -> void:
 	match ev.keycode:
 		KEY_S:
@@ -538,6 +669,10 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			_shop_buy("vest")
 		KEY_T:
 			_shop_buy("ammo")
+		KEY_C:
+			_cargo_pickup()
+		KEY_X:
+			_cargo_sell_or_deposit()
 		KEY_F5:
 			SaveSystem.save_game(self, "quicksave")
 			_hud.flash("Saved.")

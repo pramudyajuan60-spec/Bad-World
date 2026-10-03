@@ -27,6 +27,10 @@ const DIR_NW := "nw"
 var grenades: int = 0
 var has_armor: bool = false
 const ARMOR_REDUCTION: float = 0.25  # -25% damage taken
+# --- MVP 3: cargo & cash ---
+var carried_cargo: int = 0
+var carried_cash: int = 0
+const MAX_CARGO: int = 6
 
 var hp: float
 var state: int = State.IDLE

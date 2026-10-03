@@ -19,10 +19,10 @@ func update_selection(selected: Array) -> void:
 		var wname: String = u.weapon.display_name if u.weapon != null else "none"
 		var armor := "Vest" if u.has_armor else "-"
 		var state := "DOWNED" if u.state == 3 else ("DEFEND" if u.defend_mode else "OK")
-		info.text = "%s | HP %d/%d | %s %d/%d | Grenades %d | %s | Tier %d | $%d/cycle | %s" % [
+		info.text = "%s | HP %d/%d | %s %d/%d | Grenades %d | %s | Tier %d | $%d/cycle | Cargo %d | Cash $%d | %s" % [
 			u.unit_name, int(u.hp), int(u.max_hp), wname,
 			u.ammo_in_mag, u.reserve_ammo, u.grenades, armor,
-			u.unit_tier, u.salary, state]
+			u.unit_tier, u.salary, u.carried_cargo, u.carried_cash, state]
 	else:
 		var names: Array = []
 		for u in selected:
