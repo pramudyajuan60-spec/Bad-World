@@ -39,6 +39,9 @@ var _command_surge_timer: float = 0.0
 var _tactical_link_timer: float = 0.0
 # --- MVP 5: diplomacy (faction standing toward player) ---
 var faction_standing := {"vartieri": -100, "nasion": -100, "dea": -50}
+# --- MVP 5: strategic AI director ---
+var _ai_director_timer: float = 0.0
+const AI_DIRECTOR_INTERVAL := 45.0
 # --- MVP 2d: economy ---
 var money: int = 4000
 var morale: float = 100.0  # 0..100, affects accuracy
@@ -79,6 +82,11 @@ func _process(delta: float) -> void:
 	_tactical_link_timer = maxf(0.0, _tactical_link_timer - delta)
 	# MVP 5: fog of war — enemies visible only near player units/vehicles.
 	_update_fog()
+	# MVP 5: strategic AI director.
+	_ai_director_timer += delta
+	if _ai_director_timer >= AI_DIRECTOR_INTERVAL:
+		_ai_director_timer = 0.0
+		_run_ai_director()
 	# DEA response logic.
 	_update_dea(delta)
 	# Refresh economy HUD (payroll countdown ticks).
@@ -1093,6 +1101,39 @@ func _update_fog() -> void:
 				break
 		if not boarded:
 			u.visible = seen
+
+
+func _run_ai_director() -> void:
+	# MVP 5 strategic AI: hostile factions reinforce and raid periodically.
+	# Only acts if standing is hostile.
+	for faction in ["vartieri", "nasion"]:
+		if int(faction_standing.get(faction, 0)) > -50:
+			continue  # not hostile
+		# Count this faction's units (use enemy units as proxy).
+		var count := 0
+		for u in _units:
+			if u.is_enemy and u.state != RTSUnit.State.DEAD:
+				count += 1
+		if count < 6:
+			# Reinforce: spawn 2 units at faction territory.
+			var base := Vector2(-1200, -800) if faction == "vartieri" else Vector2(1200, 800)
+			for i in 2:
+				var u := _spawn_unit("%s Raider" % faction.capitalize(), B1_FRAMES,
+					base + Vector2(i * 60, 0), true, {"unit_tier": 1, "salary": 0})
+				u.modulate = Color(1.0, 0.45, 0.45)
+			_hud.flash("%s reinforcements!" % faction.capitalize(), true)
+		elif count >= 6:
+			# Raid: send half the force toward player base.
+			var raiders: Array[RTSUnit] = []
+			for u in _units:
+				if u.is_enemy and u.state == RTSUnit.State.IDLE:
+					raiders.append(u)
+					if raiders.size() >= count / 2:
+						break
+			for r in raiders:
+				r.order_attack_move(Vector2(-1100, 900))
+			if not raiders.is_empty():
+				_hud.flash("Enemy raid incoming!", true)
 
 
 func _handle_hotkey(ev: InputEventKey) -> void:
