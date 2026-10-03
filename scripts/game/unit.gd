@@ -33,6 +33,10 @@ var ammo_in_mag: int = 0
 var reserve_ammo: int = 0
 var is_reloading: bool = false
 var _reload_timer: float = 0.0
+# --- MVP 2b: defend / suppression ---
+var defend_mode: bool = false
+var suppression: float = 0.0  # 0..1, reduces accuracy
+var _defend_anchor: Vector2 = Vector2.INF
 
 var _nav: NavigationAgent2D
 var _sprite: AnimatedSprite2D
@@ -100,6 +104,8 @@ func _physics_process(delta: float) -> void:
 		_reload_timer -= delta
 		if _reload_timer <= 0.0:
 			_finish_reload()
+	# Suppression decays when not under fire.
+	suppression = maxf(0.0, suppression - delta * 0.15)
 	match state:
 		State.IDLE:
 			_acquire_target()
@@ -121,6 +127,7 @@ func order_move(pos: Vector2) -> void:
 		return
 	target = null
 	attack_move_pos = Vector2.INF
+	_clear_defend()
 	_nav.target_position = pos
 	state = State.MOVING
 
@@ -131,8 +138,16 @@ func order_attack_move(pos: Vector2) -> void:
 		return
 	target = null
 	attack_move_pos = pos
+	_clear_defend()
 	_nav.target_position = pos
 	state = State.MOVING
+
+
+func _clear_defend() -> void:
+	if defend_mode:
+		defend_mode = false
+		_defend_anchor = Vector2.INF
+		_update_selection_visual()
 
 
 func order_attack(unit: RTSUnit) -> void:
@@ -157,14 +172,33 @@ func order_stop() -> void:
 func take_damage(amount: float, from: RTSUnit) -> void:
 	if state == State.DEAD:
 		return
-	hp = maxf(0.0, hp - amount)
+	# Directional cover: check each cover point for protection.
+	var mult: float = 1.0
+	if from != null:
+		for c in get_tree().get_nodes_in_group("cover"):
+			var m: float = (c as CoverPoint).protection_for(global_position, from.global_position)
+			mult = minf(mult, m)
+	var final: float = amount * mult
+	hp = maxf(0.0, hp - final)
 	hp_changed.emit(self)
 	_update_hp_bar()
+	# Suppression builds when taking fire (decays in _physics_process).
+	suppression = minf(1.0, suppression + 0.25)
 	if hp <= 0.0:
 		_die()
 	elif state == State.IDLE and from != null and not from.is_enemy == is_enemy:
 		# retaliate when idle and hit by an enemy
 		order_attack(from)
+
+
+func order_defend(v: bool) -> void:
+	defend_mode = v
+	if v:
+		_defend_anchor = global_position
+		order_stop()
+	else:
+		_defend_anchor = Vector2.INF
+	_update_selection_visual()
 
 
 func _die() -> void:
@@ -242,6 +276,19 @@ func _combat(delta: float) -> void:
 		return
 	var to: Vector2 = target.global_position - global_position
 	_update_facing(to.normalized())
+	# Defend mode: hold the anchor, engage only within weapon range + small leash.
+	if defend_mode and _defend_anchor != Vector2.INF:
+		var anchor_dist: float = global_position.distance_to(_defend_anchor)
+		if to.length() > weapon.attack_range or anchor_dist > 120.0:
+			# stay put; drop target if it leaves effective zone
+			if to.length() > weapon.attack_range + 60.0:
+				target = null
+				state = State.IDLE
+				return
+			velocity = Vector2.ZERO
+			move_and_slide()
+			_try_fire()
+			return
 	if to.length() > weapon.attack_range:
 		# chase
 		_nav.target_position = target.global_position
@@ -280,7 +327,10 @@ func _try_fire() -> void:
 
 ## Combined accuracy modifier from morale/suppression/cover (MVP 2b hooks).
 func _accuracy_modifier() -> float:
-	return 1.0
+	var m: float = 1.0 - suppression * 0.5  # suppressed: up to -50% accuracy
+	if defend_mode:
+		m *= 1.15  # steady aim while holding position
+	return m
 
 
 func _has_los(target_unit: RTSUnit) -> bool:

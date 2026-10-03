@@ -103,6 +103,29 @@ func _build_map() -> void:
 	border.default_color = Color(0.9, 0.75, 0.4, 0.8)
 	border.width = 4.0
 	add_child(border)
+	# MVP 2 cover points (sandbags/crates): directional, don't block LoS
+	var cover_spots: Array[Vector2] = [
+		Vector2(-700, 500), Vector2(-300, 600), Vector2(100, 400),
+		Vector2(600, -200), Vector2(300, -500), Vector2(-100, -300),
+	]
+	for spot in cover_spots:
+		var cp := CoverPoint.new()
+		cp.position = spot
+		var shape := CollisionShape2D.new()
+		var rect := RectangleShape2D.new()
+		rect.size = Vector2(56, 24)
+		shape.shape = rect
+		cp.add_child(shape)
+		# collision on cover layer (2) so it doesn't block unit movement/LoS ray
+		cp.collision_layer = 2
+		cp.collision_mask = 0
+		var vis := Polygon2D.new()
+		vis.polygon = PackedVector2Array([
+			Vector2(-28, -12), Vector2(28, -12),
+			Vector2(28, 12), Vector2(-28, 12)])
+		vis.color = Color(0.55, 0.48, 0.32, 0.9)
+		cp.add_child(vis)
+		add_child(cp)
 
 
 func _spawn_initial_units() -> void:
@@ -333,6 +356,15 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			for u in _selected:
 				u.start_reload()
 			_hud.flash("Reloading...")
+		KEY_D:
+			var any_off := false
+			for u in _selected:
+				if not u.defend_mode:
+					any_off = true
+					break
+			for u in _selected:
+				u.order_defend(any_off)
+			_hud.flash("Defend mode: " + ("ON" if any_off else "OFF"))
 		KEY_F5:
 			SaveSystem.save_game(self, "quicksave")
 			_hud.flash("Saved.")
