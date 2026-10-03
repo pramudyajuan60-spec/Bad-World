@@ -37,6 +37,8 @@ const ABILITY_W_CD := 60.0
 var _assassinate_pending: bool = false
 var _command_surge_timer: float = 0.0
 var _tactical_link_timer: float = 0.0
+# --- MVP 5: diplomacy (faction standing toward player) ---
+var faction_standing := {"vartieri": -100, "nasion": -100, "dea": -50}
 # --- MVP 2d: economy ---
 var money: int = 4000
 var morale: float = 100.0  # 0..100, affects accuracy
@@ -75,6 +77,8 @@ func _process(delta: float) -> void:
 	ability_w_cd = maxf(0.0, ability_w_cd - delta)
 	_command_surge_timer = maxf(0.0, _command_surge_timer - delta)
 	_tactical_link_timer = maxf(0.0, _tactical_link_timer - delta)
+	# MVP 5: fog of war — enemies visible only near player units/vehicles.
+	_update_fog()
 	# DEA response logic.
 	_update_dea(delta)
 	# Refresh economy HUD (payroll countdown ticks).
@@ -1059,6 +1063,36 @@ func _grenade_blast(pos: Vector2, radius: float, damage: float) -> void:
 			u.take_damage(damage, null)
 	# visual flash
 	_flash_marker(pos, Color(1, 0.6, 0.2))
+
+
+func _update_fog() -> void:
+	# MVP 5: enemy units/buildings visible only within sight of player assets.
+	# Player units reveal sight_range; vehicles reveal 400.
+	var viewers: Array[Vector2] = []
+	for u in _units:
+		if not u.is_enemy and u.state != RTSUnit.State.DEAD and u.visible:
+			viewers.append(u.global_position)
+	for v in _vehicles:
+		viewers.append(v.global_position)
+	for u in _units:
+		if not u.is_enemy:
+			continue
+		# Don't hide downed/dead (they're already handled).
+		if u.state == RTSUnit.State.DEAD:
+			continue
+		var seen := false
+		for vp in viewers:
+			if u.global_position.distance_to(vp) < 400.0:
+				seen = true
+				break
+		# Boarded check: units in vehicles are invisible for a different reason.
+		var boarded := false
+		for v in _vehicles:
+			if u in v.passengers:
+				boarded = true
+				break
+		if not boarded:
+			u.visible = seen
 
 
 func _handle_hotkey(ev: InputEventKey) -> void:

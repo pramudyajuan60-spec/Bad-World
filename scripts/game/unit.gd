@@ -368,7 +368,8 @@ func _on_arrived() -> void:
 
 
 func _acquire_target() -> void:
-	"""Auto-acquire nearest enemy in sight while idle or attack-moving."""
+	"""Auto-acquire target in sight while idle or attack-moving.
+	MVP 5: enemies use target priority (weakest/MC first), not just nearest."""
 	if target != null and is_instance_valid(target) and target.state != State.DEAD:
 		if state == State.IDLE or state == State.MOVING:
 			state = State.ATTACKING
@@ -378,15 +379,27 @@ func _acquire_target() -> void:
 		return
 	var foes: Array = game.get_enemies_of(self)
 	var best: RTSUnit = null
-	var best_d := sight_range
+	var best_score := -1.0
 	for f in foes:
 		if f.state == State.DEAD or f.state == State.DOWNED:
 			continue  # don't auto-target downed (manual execution only)
 		if SafeZone.is_in_safe_zone(f.global_position, get_tree()):
 			continue  # safe zone: no combat
-		var d: Vector2 = f.global_position - global_position
-		if d.length() < best_d:
-			best_d = d.length()
+		var d: float = (f.global_position - global_position).length()
+		if d > sight_range:
+			continue
+		var score: float
+		if is_enemy:
+			# MVP 5 tactical AI: priority = low HP + MC bonus - distance penalty.
+			score = 100.0 - f.hp
+			if f.unit_tier == 4:  # MC/special
+				score += 50.0
+			score -= d * 0.1
+		else:
+			# Player units: nearest (simple).
+			score = sight_range - d
+		if score > best_score:
+			best_score = score
 			best = f
 	if best != null:
 		target = best
@@ -394,6 +407,32 @@ func _acquire_target() -> void:
 			state = State.ATTACKING
 		# attack-moving units engage without abandoning their path entirely:
 		# they stop to fight, then resume via attack_move_pos still set.
+	# MVP 5: enemies retreat at low HP.
+	if is_enemy and hp < max_hp * 0.25 and state != State.DEAD and state != State.DOWNED:
+		_try_retreat()
+
+
+func _try_retreat() -> void:
+	# Run away from nearest threat toward map edge.
+	var game := _game()
+	if game == null:
+		return
+	var foes: Array = game.get_enemies_of(self)
+	var nearest: RTSUnit = null
+	var nearest_d := 1e9
+	for f in foes:
+		if f.state == State.DEAD:
+			continue
+		var d: float = global_position.distance_to(f.global_position)
+		if d < nearest_d:
+			nearest_d = d
+			nearest = f
+	if nearest == null:
+		return
+	var away: Vector2 = (global_position - nearest.global_position).normalized()
+	_nav.target_position = global_position + away * 400.0
+	target = null
+	state = State.MOVING
 
 
 func _combat(delta: float) -> void:
