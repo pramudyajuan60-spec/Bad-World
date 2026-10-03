@@ -42,6 +42,11 @@ var faction_standing := {"vartieri": -100, "nasion": -100, "dea": -50}
 # --- MVP 5: strategic AI director ---
 var _ai_director_timer: float = 0.0
 const AI_DIRECTOR_INTERVAL := 45.0
+# --- MVP 6a: victory/defeat ---
+var game_over: bool = false
+var victory: bool = false
+var _kill_count: int = 0
+var _money_earned: int = 0
 # --- MVP 2d: economy ---
 var money: int = 4000
 var morale: float = 100.0  # 0..100, affects accuracy
@@ -87,6 +92,8 @@ func _process(delta: float) -> void:
 	if _ai_director_timer >= AI_DIRECTOR_INTERVAL:
 		_ai_director_timer = 0.0
 		_run_ai_director()
+	# MVP 6a: check victory/defeat.
+	_check_end_conditions()
 	# DEA response logic.
 	_update_dea(delta)
 	# Refresh economy HUD (payroll countdown ticks).
@@ -175,6 +182,7 @@ func _ready() -> void:
 	_camera.map_bounds = MAP_BOUNDS
 	_build_map()
 	_spawn_initial_units()
+	_hud.get_node("Minimap").game = self
 	_hud.get_node("Hint").text = (
 		"LMB: select | Shift+LMB: add | Drag: box | Double-click: select type\n"
 		+ "RMB: move | A+RMB: attack-move | S: stop | D: defend | R: reload\n"
@@ -856,6 +864,7 @@ func _cargo_sell_or_deposit() -> void:
 		var bank := _nearest_in_group(u.global_position, "bank", 160.0)
 		if bank != null and u.carried_cash > 0:
 			money += u.carried_cash
+			_money_earned += u.carried_cash
 			_hud.flash("Deposited $%d" % u.carried_cash)
 			u.carried_cash = 0
 			did_something = true
@@ -1136,6 +1145,66 @@ func _run_ai_director() -> void:
 				_hud.flash("Enemy raid incoming!", true)
 
 
+func _check_end_conditions() -> void:
+	if game_over or _paused:
+		return
+	# Defeat: MC dead.
+	var mc := _get_mc()
+	if mc == null:
+		# Check if MC ever existed (not just not spawned yet).
+		var mc_exists := false
+		for u in _units:
+			if u.unit_name == campaign.main_character_name:
+				mc_exists = true
+				break
+		if mc_exists:
+			_end_game(false, "Main Character died.")
+		return
+	# Victory: all enemy units and factories destroyed.
+	var enemies_alive := false
+	for u in _units:
+		if u.is_enemy and u.state != RTSUnit.State.DEAD:
+			enemies_alive = true
+			break
+	var factories_alive := false
+	for f in get_tree().get_nodes_in_group("factories"):
+		var fac := f as Factory
+		if fac.faction != _player_faction() and not fac.destroyed:
+			factories_alive = true
+			break
+	if not enemies_alive and not factories_alive:
+		_end_game(true, "All enemies defeated!")
+
+
+func _player_faction() -> String:
+	match campaign.id:
+		&"campaign_fauzi":
+			return "vartieri"
+		&"campaign_atha":
+			return "nasion"
+		&"campaign_nabil":
+			return "dea"
+	return "bellarosa"
+
+
+func _end_game(won: bool, reason: String) -> void:
+	game_over = true
+	victory = won
+	_paused = true
+	get_tree().paused = true
+	_hud.show_end_screen(won, reason, _get_summary())
+
+
+func _get_summary() -> Dictionary:
+	return {
+		"campaign": campaign.menu_name,
+		"kills": _kill_count,
+		"money_earned": _money_earned,
+		"mc_level": mc_level,
+		"units": get_unit_count(),
+	}
+
+
 func _handle_hotkey(ev: InputEventKey) -> void:
 	match ev.keycode:
 		KEY_S:
@@ -1266,6 +1335,7 @@ func _on_unit_died(unit: RTSUnit) -> void:
 	# Killing generates heat (more for DEA kills by player).
 	if unit.is_enemy:
 		add_heat(8.0)
+		_kill_count += 1
 	else:
 		add_heat(3.0)
 

@@ -59,6 +59,19 @@ func update_heat(heat: float, dea_active: bool) -> void:
 		label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 
 
+func show_end_screen(won: bool, reason: String, summary: Dictionary) -> void:
+	var panel := $EndScreen as Control
+	panel.visible = true
+	var title: Label = $EndScreen/Title
+	title.text = "VICTORY" if won else "DEFEAT"
+	title.add_theme_color_override("font_color",
+		Color(0.4, 1, 0.4) if won else Color(1, 0.3, 0.3))
+	var body: Label = $EndScreen/Summary
+	body.text = "%s\n\nCampaign: %s\nKills: %d\nMoney earned: $%d\nMC level: %d\nUnits: %d" % [
+		reason, summary["campaign"], summary["kills"],
+		summary["money_earned"], summary["mc_level"], summary["units"]]
+
+
 func flash(text: String, warning := false) -> void:
 	_flash_label.text = text
 	_flash_label.modulate = Color(1, 0.4, 0.4, 1) if warning else Color(1, 1, 1, 1)
@@ -80,6 +93,38 @@ func _on_restart_pressed() -> void:
 func _on_quit_to_menu_pressed() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+
+
+func _on_ability_q() -> void:
+	get_parent()._use_ability_q()
+
+
+func _on_ability_w() -> void:
+	get_parent()._use_ability_w()
+
+
+func _process(_delta: float) -> void:
+	# Update ability button labels with cooldowns.
+	var game := get_parent()
+	var q: Button = $AbilityBar/AbilityQ
+	var w: Button = $AbilityBar/AbilityW
+	var q_names := {"campaign_juan": "Assassinate", "campaign_fauzi": "Deceive",
+		"campaign_atha": "Surge", "campaign_nabil": "Grenade"}
+	var w_names := {"campaign_juan": "TactLink", "campaign_fauzi": "VehCmd",
+		"campaign_atha": "Bottle", "campaign_nabil": "Aura"}
+	var cid := String(game.campaign.id) if game.campaign else "campaign_juan"
+	q.text = "Q: %s" % q_names.get(cid, "?")
+	w.text = "W: %s" % w_names.get(cid, "?")
+	if game.ability_q_cd > 0:
+		q.text += " (%.0f)" % game.ability_q_cd
+		q.disabled = true
+	else:
+		q.disabled = false
+	if game.ability_w_cd > 0:
+		w.text += " (%.0f)" % game.ability_w_cd
+		w.disabled = true
+	else:
+		w.disabled = false
 
 
 func _on_save_pressed() -> void:

@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3 uid="uid://badworldgame1"]
+[gd_scene load_steps=6 format=3 uid="uid://badworldgame1"]
 
 [ext_resource type="Script" path="res://scripts/game/game.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/game/rts_camera.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/game/hud.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/game/minimap.gd" id="minimap"]
 
 [node name="Game" type="Node2D"]
 y_sort_enabled = true
@@ -64,6 +65,42 @@ grow_horizontal = 0
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 16
 
+[node name="Minimap" type="Control" parent="HUD"]
+offset_left = -196.0
+offset_top = -151.0
+offset_right = -16.0
+offset_bottom = -16.0
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 0
+script = ExtResource("minimap")
+
+[node name="AbilityBar" type="HBoxContainer" parent="HUD"]
+offset_left = 16.0
+offset_top = -100.0
+offset_right = 220.0
+offset_bottom = -60.0
+anchors_preset = 10
+anchor_top = 1.0
+anchor_bottom = 1.0
+grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="AbilityQ" type="Button" parent="HUD/AbilityBar"]
+custom_minimum_size = Vector2(90, 36)
+text = "Q"
+
+[node name="AbilityW" type="Button" parent="HUD/AbilityBar"]
+custom_minimum_size = Vector2(90, 36)
+text = "W"
+
+[connection signal="pressed" from="HUD/AbilityBar/AbilityQ" to="HUD" method="_on_ability_q"]
+[connection signal="pressed" from="HUD/AbilityBar/AbilityW" to="HUD" method="_on_ability_w"]
+
 [node name="Flash" type="Label" parent="HUD"]
 offset_left = -300.0
 offset_top = 120.0
@@ -115,3 +152,38 @@ text = "Quit to Menu"
 [connection signal="pressed" from="HUD/PausePanel/VBox/Load" to="HUD" method="_on_load_pressed"]
 [connection signal="pressed" from="HUD/PausePanel/VBox/Restart" to="HUD" method="_on_restart_pressed"]
 [connection signal="pressed" from="HUD/PausePanel/VBox/Quit" to="HUD" method="_on_quit_to_menu_pressed"]
+
+[node name="EndScreen" type="PanelContainer" parent="HUD"]
+visible = false
+offset_left = -280.0
+offset_top = -220.0
+offset_right = 280.0
+offset_bottom = 220.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="HUD/EndScreen"]
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="HUD/EndScreen/VBox"]
+text = "VICTORY"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 36
+
+[node name="Summary" type="Label" parent="HUD/EndScreen/VBox"]
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="Restart" type="Button" parent="HUD/EndScreen/VBox"]
+text = "Restart"
+
+[node name="Quit" type="Button" parent="HUD/EndScreen/VBox"]
+text = "Quit to Menu"
+
+[connection signal="pressed" from="HUD/EndScreen/VBox/Restart" to="HUD" method="_on_restart_pressed"]
+[connection signal="pressed" from="HUD/EndScreen/VBox/Quit" to="HUD" method="_on_quit_to_menu_pressed"]
