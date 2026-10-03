@@ -999,9 +999,38 @@ func get_save_data() -> Dictionary:
 			"armor": u.has_armor,
 			"tier": u.unit_tier,
 			"salary": u.salary,
+			"cargo": u.carried_cargo,
+			"cash": u.carried_cash,
 		})
 	return {"units": units_data, "campaign": "campaign_juan",
-		"money": money, "morale": morale, "payroll_timer": payroll_timer}
+		"money": money, "morale": morale, "payroll_timer": payroll_timer,
+		"heat": heat, "vehicles": _get_vehicles_save_data(),
+		"factories": _get_factories_save_data()}
+
+
+func _get_vehicles_save_data() -> Array:
+	var arr: Array = []
+	for v in _vehicles:
+		arr.append({
+			"id": String(v.vdata.id),
+			"pos": [v.global_position.x, v.global_position.y],
+			"hp": v.hp,
+			"cargo": v.carried_cargo,
+		})
+	return arr
+
+
+func _get_factories_save_data() -> Array:
+	var arr: Array = []
+	for f in get_tree().get_nodes_in_group("factories"):
+		var fac := f as Factory
+		arr.append({
+			"faction": fac.faction,
+			"level": fac.level,
+			"stock": fac.stock,
+			"hp": fac.hp,
+		})
+	return arr
 
 
 func apply_save_data(data: Dictionary) -> void:
@@ -1023,7 +1052,29 @@ func apply_save_data(data: Dictionary) -> void:
 		u.has_armor = bool(ud.get("armor", false))
 		u.unit_tier = int(ud.get("tier", 1))
 		u.salary = int(ud.get("salary", 35))
+		u.carried_cargo = int(ud.get("cargo", 0))
+		u.carried_cash = int(ud.get("cash", 0))
 	money = int(data.get("money", 4000))
 	morale = float(data.get("morale", 100.0))
 	payroll_timer = float(data.get("payroll_timer", PAYROLL_INTERVAL))
+	heat = float(data.get("heat", 0.0))
+	# Restore vehicles.
+	for v in _vehicles:
+		v.queue_free()
+	_vehicles.clear()
+	for vd in data.get("vehicles", []):
+		var v := spawn_vehicle(StringName(vd["id"]),
+			Vector2(vd["pos"][0], vd["pos"][1]))
+		v.hp = float(vd["hp"])
+		v.carried_cargo = int(vd["cargo"])
+	# Restore factories.
+	for f in get_tree().get_nodes_in_group("factories"):
+		var fac := f as Factory
+		for fd in data.get("factories", []):
+			if fd["faction"] == fac.faction:
+				fac.level = int(fd["level"])
+				fac.stock = int(fd["stock"])
+				fac.hp = float(fd["hp"])
+				if fac.hp <= 0.0:
+					fac.destroyed = true
 	_update_hud()
