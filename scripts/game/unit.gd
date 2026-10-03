@@ -8,7 +8,7 @@ extends CharacterBody2D
 ##   walk_se / walk_sw / walk_ne / walk_nw
 ##   attack_se / attack_sw / attack_ne / attack_nw
 
-enum State { IDLE, MOVING, ATTACKING, DEAD }
+enum State { IDLE, MOVING, ATTACKING, DOWNED, REVIVING, DEAD }
 
 const DIR_SE := "se"
 const DIR_SW := "sw"
@@ -37,6 +37,13 @@ var _reload_timer: float = 0.0
 var defend_mode: bool = false
 var suppression: float = 0.0  # 0..1, reduces accuracy
 var _defend_anchor: Vector2 = Vector2.INF
+# --- MVP 2c: downed / revive ---
+var bleedout_timer: float = 0.0
+const BLEEDOUT_TIME: float = 30.0
+var revive_target: RTSUnit = null
+var _revive_timer: float = 0.0
+const REVIVE_TIME: float = 3.0
+var surrendered: bool = false  # enemy gave up; recruitable by Juan
 
 var _nav: NavigationAgent2D
 var _sprite: AnimatedSprite2D
@@ -99,6 +106,11 @@ func _finish_reload() -> void:
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
+	if state == State.DOWNED:
+		bleedout_timer -= delta
+		if bleedout_timer <= 0.0:
+			_die()
+		return
 	_attack_timer = maxf(0.0, _attack_timer - delta)
 	if is_reloading:
 		_reload_timer -= delta
@@ -118,7 +130,58 @@ func _physics_process(delta: float) -> void:
 			_acquire_target()
 		State.ATTACKING:
 			_combat(delta)
+		State.REVIVING:
+			_do_revive(delta)
+		State.DOWNED:
+			pass  # handled at top of _physics_process
 	_play_state_anim()
+
+
+## Order this unit to revive a downed friendly.
+func order_revive(downed: RTSUnit) -> void:
+	if state == State.DEAD or state == State.DOWNED:
+		return
+	if downed == null or downed.state != State.DOWNED:
+		return
+	if downed.is_enemy == is_enemy:  # only friendlies (surrendered handled via recruit)
+		revive_target = downed
+		target = null
+		_revive_timer = 0.0
+		state = State.REVIVING
+		_nav.target_position = downed.global_position
+
+
+func _do_revive(delta: float) -> void:
+	if revive_target == null or not is_instance_valid(revive_target):
+		revive_target = null
+		state = State.IDLE
+		return
+	if revive_target.state != State.DOWNED:
+		revive_target = null
+		state = State.IDLE
+		return
+	var dist: float = global_position.distance_to(revive_target.global_position)
+	if dist > 48.0:
+		_nav.target_position = revive_target.global_position
+		_follow_path(delta)
+	else:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		_revive_timer += delta
+		if _revive_timer >= REVIVE_TIME:
+			revive_target._revived()
+			revive_target = null
+			state = State.IDLE
+
+
+func _revived() -> void:
+	state = State.IDLE
+	hp = max_hp * 0.5
+	bleedout_timer = 0.0
+	surrendered = false
+	_sprite.rotation = 0.0
+	_sprite.modulate = Color.WHITE
+	_update_hp_bar()
 
 
 func order_move(pos: Vector2) -> void:
@@ -151,12 +214,34 @@ func _clear_defend() -> void:
 
 
 func order_attack(unit: RTSUnit) -> void:
-	"""Focused attack on a specific unit."""
-	if state == State.DEAD or unit == null or unit.state == State.DEAD:
+	"""Focused attack on a specific unit (incl. downed for execution)."""
+	if state == State.DEAD or state == State.DOWNED:
+		return
+	if unit == null or unit.state == State.DEAD:
+		return
+	# Recruit surrendered enemies instead of executing (Juan's faction trait).
+	if unit.state == State.DOWNED and unit.surrendered and unit.is_enemy != is_enemy:
+		unit._recruited_by(self)
 		return
 	target = unit
 	attack_move_pos = Vector2.INF
+	revive_target = null
 	state = State.ATTACKING
+
+
+func _recruited_by(recruiter: RTSUnit) -> void:
+	# Flip side, restore to fighting shape at half HP.
+	is_enemy = recruiter.is_enemy
+	surrendered = false
+	state = State.IDLE
+	hp = max_hp * 0.5
+	bleedout_timer = 0.0
+	_sprite.rotation = 0.0
+	_sprite.modulate = Color.WHITE
+	if is_enemy:
+		_sprite.modulate = Color(1.0, 0.45, 0.45)  # keep hostile tint if still enemy
+	_update_hp_bar()
+	_update_selection_visual()
 
 
 func order_stop() -> void:
@@ -172,6 +257,10 @@ func order_stop() -> void:
 func take_damage(amount: float, from: RTSUnit) -> void:
 	if state == State.DEAD:
 		return
+	if state == State.DOWNED:
+		# Execution: any damage to a downed unit kills it.
+		_die()
+		return
 	# Directional cover: check each cover point for protection.
 	var mult: float = 1.0
 	if from != null:
@@ -185,10 +274,30 @@ func take_damage(amount: float, from: RTSUnit) -> void:
 	# Suppression builds when taking fire (decays in _physics_process).
 	suppression = minf(1.0, suppression + 0.25)
 	if hp <= 0.0:
-		_die()
+		_go_downed(from)
 	elif state == State.IDLE and from != null and not from.is_enemy == is_enemy:
 		# retaliate when idle and hit by an enemy
 		order_attack(from)
+
+
+func _go_downed(from: RTSUnit) -> void:
+	# MVP 2c: 0 HP => downed (not dead). Bleed out, revivable, executable.
+	# Main Characters don't go down (per spec, MC death = defeat).
+	if unit_name == "Juan Bellarosa":
+		_die()
+		return
+	state = State.DOWNED
+	bleedout_timer = BLEEDOUT_TIME
+	target = null
+	revive_target = null
+	velocity = Vector2.ZERO
+	_nav.target_position = global_position
+	_sprite.modulate = Color(0.7, 0.5, 0.5, 0.9)
+	_sprite.rotation = PI / 2.0  # lying down
+	_update_hp_bar()
+	# Surrender roll for regular enemies (Juan can recruit them).
+	if is_enemy and from != null and not from.is_enemy and randf() < 0.35:
+		surrendered = true
 
 
 func order_defend(v: bool) -> void:
@@ -204,6 +313,7 @@ func order_defend(v: bool) -> void:
 func _die() -> void:
 	state = State.DEAD
 	velocity = Vector2.ZERO
+	_sprite.rotation = 0.0
 	_play("idle", _facing)  # TODO: death anim when extracted
 	_sprite.modulate = Color(0.45, 0.45, 0.5, 0.85)
 	_ring.visible = false
@@ -250,8 +360,8 @@ func _acquire_target() -> void:
 	var best: RTSUnit = null
 	var best_d := sight_range
 	for f in foes:
-		if f.state == State.DEAD:
-			continue
+		if f.state == State.DEAD or f.state == State.DOWNED:
+			continue  # don't auto-target downed (manual execution only)
 		var d: Vector2 = f.global_position - global_position
 		if d.length() < best_d:
 			best_d = d.length()

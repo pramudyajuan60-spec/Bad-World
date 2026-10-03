@@ -298,10 +298,19 @@ func _update_select_box() -> void:
 func _issue_right_click(world_pos: Vector2, queued: bool) -> void:
 	if _selected.is_empty():
 		return
-	var foe := _unit_at(world_pos)
-	if foe != null and foe.is_enemy and foe.state != RTSUnit.State.DEAD:
+	var clicked := _unit_at(world_pos)
+	# Right-click downed friendly => revive.
+	if clicked != null and clicked.state == RTSUnit.State.DOWNED \
+			and not clicked.is_enemy and clicked.surrendered == false:
 		for u in _selected:
-			u.order_attack(foe)
+			if not u.is_enemy:
+				u.order_revive(clicked)
+		_flash_marker(world_pos, Color(0.4, 1, 0.6))
+		_hud.flash("Reviving...")
+		return
+	if clicked != null and clicked.is_enemy and clicked.state != RTSUnit.State.DEAD:
+		for u in _selected:
+			u.order_attack(clicked)
 		_flash_marker(world_pos, Color(1, 0.3, 0.3))
 		return
 	if _attack_move_pending:
