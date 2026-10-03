@@ -14,6 +14,15 @@ func update_selection(selected: Array) -> void:
 	var info: Label = $SelectionInfo
 	if selected.is_empty():
 		info.text = "No selection"
+	elif selected.size() == 1:
+		var u = selected[0]
+		var wname: String = u.weapon.display_name if u.weapon != null else "none"
+		var armor := "Vest" if u.has_armor else "-"
+		var state := "DOWNED" if u.state == 3 else ("DEFEND" if u.defend_mode else "OK")
+		info.text = "%s | HP %d/%d | %s %d/%d | Grenades %d | %s | Tier %d | $%d/cycle | %s" % [
+			u.unit_name, int(u.hp), int(u.max_hp), wname,
+			u.ammo_in_mag, u.reserve_ammo, u.grenades, armor,
+			u.unit_tier, u.salary, state]
 	else:
 		var names: Array = []
 		for u in selected:

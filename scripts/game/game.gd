@@ -164,6 +164,8 @@ func _build_map() -> void:
 	add_child(border)
 	# MVP 2d: Recruitment building (player base, bottom-left)
 	_spawn_recruit_building(Vector2(-1250, 950))
+	# MVP 2e: Gun shop near recruitment
+	_spawn_gun_shop(Vector2(-1050, 950))
 	# MVP 2 cover points (sandbags/crates): directional, don't block LoS
 	var cover_spots: Array[Vector2] = [
 		Vector2(-700, 500), Vector2(-300, 600), Vector2(100, 400),
@@ -210,6 +212,28 @@ func _spawn_recruit_building(pos: Vector2) -> void:
 	b.add_child(label)
 	add_child(b)
 	b.recruit_complete.connect(_on_recruit_complete.bind(b))
+
+
+func _spawn_gun_shop(pos: Vector2) -> void:
+	var s := GunShop.new()
+	s.position = pos
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(100, 80)
+	shape.shape = rect
+	s.add_child(shape)
+	var vis := Polygon2D.new()
+	vis.polygon = PackedVector2Array([
+		Vector2(-50, -40), Vector2(50, -40),
+		Vector2(50, 40), Vector2(-50, 40)])
+	vis.color = Color(0.55, 0.38, 0.25, 0.95)
+	s.add_child(vis)
+	var label := Label.new()
+	label.text = "GUN SHOP"
+	label.position = Vector2(-38, -10)
+	label.add_theme_font_size_override("font_size", 13)
+	s.add_child(label)
+	add_child(s)
 
 
 func _on_recruit_complete(tier: int, building: RecruitBuilding) -> void:
@@ -503,6 +527,12 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			_try_recruit(2)
 		KEY_F3:
 			_try_recruit(3)
+		KEY_G:
+			_shop_buy("grenade")
+		KEY_V:
+			_shop_buy("vest")
+		KEY_T:
+			_shop_buy("ammo")
 		KEY_F5:
 			SaveSystem.save_game(self, "quicksave")
 			_hud.flash("Saved.")
@@ -510,6 +540,10 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			SaveSystem.load_game(self, "quicksave")
 			_hud.flash("Loaded.")
 		_:
+			# Shift+1..6: buy weapons for selected units
+			if ev.shift_pressed and GunShop.WEAPON_KEYS.has(ev.keycode):
+				_shop_buy("weapon", GunShop.WEAPON_KEYS[ev.keycode])
+				return
 			# control groups: Ctrl+1..9 assign, 1..9 recall
 			if ev.keycode >= KEY_1 and ev.keycode <= KEY_9:
 				var idx := ev.keycode - KEY_1
@@ -518,6 +552,34 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 					_hud.flash("Group %d assigned (%d units)." % [idx + 1, _selected.size()])
 				elif _groups.has(idx):
 					_select_only(_groups[idx])
+
+
+func _shop_buy(what: String, weapon_id: StringName = &"") -> void:
+	if get_tree().get_nodes_in_group("gun_shop").is_empty():
+		_hud.flash("No gun shop!", true)
+		return
+	if _selected.is_empty():
+		_hud.flash("Select units first.", true)
+		return
+	var bought := 0
+	for u in _selected:
+		var ok := false
+		match what:
+			"weapon":
+				ok = GunShop.buy_weapon(self, u, weapon_id)
+			"ammo":
+				ok = GunShop.buy_ammo(self, u)
+			"grenade":
+				ok = GunShop.buy_grenade(self, u)
+			"vest":
+				ok = GunShop.buy_vest(self, u)
+		if ok:
+			bought += 1
+	if bought > 0:
+		_hud.flash("Bought %s x%d" % [what, bought])
+	else:
+		_hud.flash("Can't afford %s!" % what, true)
+	_update_hud()
 
 
 func get_enemies_of(unit: RTSUnit) -> Array:
@@ -571,6 +633,10 @@ func get_save_data() -> Dictionary:
 			"weapon": String(u.weapon_id),
 			"ammo_mag": u.ammo_in_mag,
 			"ammo_reserve": u.reserve_ammo,
+			"grenades": u.grenades,
+			"armor": u.has_armor,
+			"tier": u.unit_tier,
+			"salary": u.salary,
 		})
 	return {"units": units_data, "campaign": "campaign_juan",
 		"money": money, "morale": morale, "payroll_timer": payroll_timer}
@@ -591,6 +657,10 @@ func apply_save_data(data: Dictionary) -> void:
 			u.equip_weapon(StringName(ud["weapon"]))
 			u.ammo_in_mag = int(ud.get("ammo_mag", u.ammo_in_mag))
 			u.reserve_ammo = int(ud.get("ammo_reserve", u.reserve_ammo))
+		u.grenades = int(ud.get("grenades", 0))
+		u.has_armor = bool(ud.get("armor", false))
+		u.unit_tier = int(ud.get("tier", 1))
+		u.salary = int(ud.get("salary", 35))
 	money = int(data.get("money", 4000))
 	morale = float(data.get("morale", 100.0))
 	payroll_timer = float(data.get("payroll_timer", PAYROLL_INTERVAL))

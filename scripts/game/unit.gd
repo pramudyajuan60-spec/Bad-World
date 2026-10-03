@@ -23,6 +23,10 @@ const DIR_NW := "nw"
 @export var is_enemy: bool = false
 @export var unit_tier: int = 1  # 1=B1, 2=B2, 3=B3, 4=Special
 @export var salary: int = 35  # per payroll cycle
+# --- MVP 2e: inventory ---
+var grenades: int = 0
+var has_armor: bool = false
+const ARMOR_REDUCTION: float = 0.25  # -25% damage taken
 
 var hp: float
 var state: int = State.IDLE
@@ -270,6 +274,8 @@ func take_damage(amount: float, from: RTSUnit) -> void:
 			var m: float = (c as CoverPoint).protection_for(global_position, from.global_position)
 			mult = minf(mult, m)
 	var final: float = amount * mult
+	if has_armor:
+		final *= (1.0 - ARMOR_REDUCTION)
 	hp = maxf(0.0, hp - final)
 	hp_changed.emit(self)
 	_update_hp_bar()
