@@ -448,13 +448,37 @@ func _try_fire() -> void:
 	if not _has_los(target):
 		return
 	_attack_timer = 1.0 / weapon.rate_of_fire
+	# Command Surge (Andres): 2x fire rate.
+	var game := _game()
+	if game != null and game.get("_command_surge_timer") != null:
+		if game._command_surge_timer > 0.0:
+			_attack_timer *= 0.5
 	_play("attack", _facing, true)
 	ammo_in_mag -= 1
 	# Accuracy roll per pellet.
 	for i in weapon.pellets:
 		var hit_chance: float = weapon.accuracy * _accuracy_modifier()
 		if randf() <= hit_chance:
-			target.take_damage(weapon.damage, self)
+			var dmg: float = weapon.damage
+			# Zie Triad Synergy: all 3 specials alive within 12m => +20% damage.
+			if _has_triad_synergy():
+				dmg *= 1.2
+			target.take_damage(dmg, self)
+
+
+func _has_triad_synergy() -> bool:
+	var game := _game()
+	if game == null or game.campaign == null:
+		return false
+	if game.campaign.id != &"campaign_fauzi":
+		return false
+	# Count alive tier-4 specials near this unit.
+	var count := 0
+	for u in game._units:
+		if u.unit_tier == 4 and u.state != RTSUnit.State.DEAD \
+				and u.global_position.distance_to(global_position) < 360.0:  # 12m ~ 360px
+			count += 1
+	return count >= 3
 
 
 ## Combined accuracy modifier from morale/suppression/defend.
@@ -472,6 +496,10 @@ func _accuracy_modifier() -> float:
 		if game.campaign != null and game.campaign.accuracy_bonus > 0.0:
 			if unit_tier < 4:  # regulars only, not Specials/MC
 				m *= 1.0 + game.campaign.accuracy_bonus
+		# Tactical Link (Juan W): +20% accuracy for 15s.
+		if game.get("_tactical_link_timer") != null and game._tactical_link_timer > 0.0:
+			if not is_enemy:
+				m *= 1.2
 	return m
 
 

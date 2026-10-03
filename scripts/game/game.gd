@@ -26,6 +26,17 @@ var _attack_move_pending: bool = false
 var _paused: bool = false
 # --- MVP 4: active campaign ---
 var campaign: CampaignData
+var mc_level: int = 1
+const MC_MAX_LEVEL := 5
+const MC_UPGRADE_COSTS := {2: 1000, 3: 2000, 4: 3500, 5: 5500}
+# --- MVP 4: MC abilities ---
+var ability_q_cd: float = 0.0
+var ability_w_cd: float = 0.0
+const ABILITY_Q_CD := 30.0
+const ABILITY_W_CD := 60.0
+var _assassinate_pending: bool = false
+var _command_surge_timer: float = 0.0
+var _tactical_link_timer: float = 0.0
 # --- MVP 2d: economy ---
 var money: int = 4000
 var morale: float = 100.0  # 0..100, affects accuracy
@@ -59,6 +70,11 @@ func _process(delta: float) -> void:
 		morale = minf(100.0, morale + delta * 2.0)
 	# Heat decays slowly.
 	heat = maxf(0.0, heat - delta * 0.5)
+	# Ability cooldowns and timers.
+	ability_q_cd = maxf(0.0, ability_q_cd - delta)
+	ability_w_cd = maxf(0.0, ability_w_cd - delta)
+	_command_surge_timer = maxf(0.0, _command_surge_timer - delta)
+	_tactical_link_timer = maxf(0.0, _tactical_link_timer - delta)
 	# DEA response logic.
 	_update_dea(delta)
 	# Refresh economy HUD (payroll countdown ticks).
@@ -437,6 +453,21 @@ func _on_vehicle_destroyed(v: Vehicle) -> void:
 
 
 func _on_recruit_complete(tier: int, building: RecruitBuilding) -> void:
+	if tier == 4:
+		# Special unit.
+		var sq: Array = building.get_meta("special_queue", [])
+		if sq.is_empty():
+			return
+		var data: Dictionary = sq.pop_front()
+		var spawn_pos: Vector2 = building.position + Vector2(100, 0)
+		_spawn_unit(data["name"], B1_FRAMES, spawn_pos, false, {
+			"max_hp": float(data["hp"]),
+			"weapon_id": data["weapon"],
+			"unit_tier": 4,
+			"salary": int(data["salary"]),
+		})
+		_hud.flash("%s recruited!" % data["name"])
+		return
 	var data: Dictionary = RecruitBuilding.RECRUIT_DATA[tier]
 	var spawn_pos: Vector2 = building.position + Vector2(100, 0)
 	var u := _spawn_unit("%s-%d" % [data["name"], _units.size() + 1],
@@ -669,6 +700,27 @@ func _update_select_box() -> void:
 # ------------------------------------------------------------------ orders
 
 func _issue_right_click(world_pos: Vector2, queued: bool) -> void:
+	# Assassinate: pending one-shot on clicked enemy.
+	if _assassinate_pending:
+		_assassinate_pending = false
+		var target := _unit_at(world_pos)
+		if target != null and target.is_enemy:
+			var mc := _get_mc()
+			# Counterplay: fails if target is near allies (they warn him).
+			var guarded := false
+			for u in _units:
+				if u != target and u.is_enemy == target.is_enemy \
+						and u.global_position.distance_to(target.global_position) < 150.0:
+					guarded = true
+					break
+			if guarded:
+				_hud.flash("Assassination failed: target guarded!", true)
+			else:
+				target.take_damage(500.0, mc)
+				_hud.flash("Assassinated %s!" % target.unit_name)
+		else:
+			_hud.flash("No target.", true)
+		return
 	# Vehicle selected: order move.
 	if not _selected_vehicles.is_empty():
 		for v in _selected_vehicles:
@@ -873,6 +925,142 @@ func _vehicle_repair() -> void:
 	_update_hud()
 
 
+func _try_mc_upgrade() -> void:
+	if mc_level >= MC_MAX_LEVEL:
+		_hud.flash("MC already max level!", true)
+		return
+	var cost: int = MC_UPGRADE_COSTS[mc_level + 1]
+	if money < cost:
+		_hud.flash("Need $%d for MC level %d" % [cost, mc_level + 1], true)
+		return
+	money -= cost
+	mc_level += 1
+	# Apply bonuses: +HP, +damage, -cooldown (capped per BALANCE.md).
+	for u in _units:
+		if u.unit_name == campaign.main_character_name:
+			u.max_hp *= 1.04  # ~+20% by level 5
+			u.hp = u.max_hp
+	_hud.flash("MC upgraded to level %d!" % mc_level)
+	_update_hud()
+
+
+func _try_recruit_special(index: int) -> void:
+	if mc_level < 4:
+		_hud.flash("Specials unlock at MC level 4!", true)
+		return
+	var specials: Array = RecruitBuilding.SPECIAL_DATA.get(campaign.id, [])
+	if index >= specials.size():
+		return
+	var data: Dictionary = specials[index]
+	if get_unit_count() >= campaign.unit_cap + 1:
+		_hud.flash("Unit cap reached!", true)
+		return
+	if money < int(data["price"]):
+		_hud.flash("Not enough money! Need $%d" % int(data["price"]), true)
+		return
+	var buildings := get_tree().get_nodes_in_group("recruit_building")
+	if buildings.is_empty():
+		return
+	money -= int(data["price"])
+	var b: RecruitBuilding = buildings[0]
+	# Queue as special (use tier 4 marker).
+	b.queue.append(4)
+	# Store special data for completion handler.
+	if not b.has_meta("special_queue"):
+		b.set_meta("special_queue", [])
+	(b.get_meta("special_queue") as Array).append(data)
+	b.queue_changed.emit()
+	_hud.flash("Training %s ($%d)..." % [data["name"], int(data["price"])])
+	_update_hud()
+
+
+func _get_mc() -> RTSUnit:
+	for u in _units:
+		if u.unit_name == campaign.main_character_name and u.state != RTSUnit.State.DEAD:
+			return u
+	return null
+
+
+func _use_ability_q() -> void:
+	if ability_q_cd > 0.0:
+		_hud.flash("Ability on cooldown (%.0fs)" % ability_q_cd, true)
+		return
+	var mc := _get_mc()
+	if mc == null:
+		return
+	match campaign.id:
+		&"campaign_juan":
+			# Assassinate: massive damage to selected target (counterplay: needs target selected, single use).
+			if _selected.is_empty():
+				_hud.flash("Select MC + target enemy first", true)
+				return
+			ability_q_cd = ABILITY_Q_CD
+			_hud.flash("Assassinate ready: right-click a target!")
+			_assassinate_pending = true
+		&"campaign_fauzi":
+			# Deceptive Assault: nearby enemies lose target (confusion).
+			ability_q_cd = ABILITY_Q_CD
+			for u in _units:
+				if u.is_enemy and u.global_position.distance_to(mc.global_position) < 400.0:
+					u.target = null
+					u.state = RTSUnit.State.IDLE
+			_hud.flash("Deceptive Assault! Enemies confused.")
+		&"campaign_atha":
+			# Command Surge: 2x fire rate for 10s.
+			ability_q_cd = ABILITY_Q_CD
+			_command_surge_timer = 10.0
+			_hud.flash("Command Surge! 2x fire rate for 10s.")
+		&"campaign_nabil":
+			# Throw Grenade: AoE at MC position.
+			ability_q_cd = ABILITY_Q_CD
+			_grenade_blast(mc.global_position, 150.0, 80.0)
+			_hud.flash("Grenade thrown!")
+
+
+func _use_ability_w() -> void:
+	if ability_w_cd > 0.0:
+		_hud.flash("Ability on cooldown (%.0fs)" % ability_w_cd, true)
+		return
+	var mc := _get_mc()
+	if mc == null:
+		return
+	match campaign.id:
+		&"campaign_juan":
+			# Tactical Link: reveal + accuracy buff for 15s.
+			ability_w_cd = ABILITY_W_CD
+			_tactical_link_timer = 15.0
+			_hud.flash("Tactical Link active!")
+		&"campaign_fauzi":
+			# Vehicle Commander: repair + buff vehicles.
+			ability_w_cd = ABILITY_W_CD
+			for v in _vehicles:
+				v.hp = minf(v.vdata.max_hp, v.hp + 200.0)
+			_hud.flash("Vehicle Commander: vehicles repaired!")
+		&"campaign_atha":
+			# Throw Drug Bottle: slow enemies in radius.
+			ability_w_cd = ABILITY_W_CD
+			for u in _units:
+				if u.is_enemy and u.global_position.distance_to(mc.global_position) < 300.0:
+					u.suppression = 1.0  # max suppression = slowed/inaccurate
+			_hud.flash("Drug Bottle! Enemies suppressed.")
+		&"campaign_nabil":
+			# Discipline Aura: clear suppression + morale boost.
+			ability_w_cd = ABILITY_W_CD
+			for u in _units:
+				if not u.is_enemy:
+					u.suppression = 0.0
+			morale = 100.0
+			_hud.flash("Discipline Aura! Squad restored.")
+
+
+func _grenade_blast(pos: Vector2, radius: float, damage: float) -> void:
+	for u in _units:
+		if u.global_position.distance_to(pos) <= radius:
+			u.take_damage(damage, null)
+	# visual flash
+	_flash_marker(pos, Color(1, 0.6, 0.2))
+
+
 func _handle_hotkey(ev: InputEventKey) -> void:
 	match ev.keycode:
 		KEY_S:
@@ -902,6 +1090,12 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			_try_recruit(2)
 		KEY_F3:
 			_try_recruit(3)
+		KEY_F10:
+			_try_recruit_special(0)
+		KEY_F11:
+			_try_recruit_special(1)
+		KEY_F12:
+			_try_recruit_special(2)
 		KEY_G:
 			_shop_buy("grenade")
 		KEY_V:
@@ -924,6 +1118,12 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			_try_buy_vehicle(&"guntruck")
 		KEY_F8:
 			_try_buy_vehicle(&"apc")
+		KEY_U:
+			_try_mc_upgrade()
+		KEY_Q:
+			_use_ability_q()
+		KEY_W:
+			_use_ability_w()
 		KEY_F5:
 			SaveSystem.save_game(self, "quicksave")
 			_hud.flash("Saved.")
