@@ -98,6 +98,14 @@ text = "Q"
 custom_minimum_size = Vector2(90, 36)
 text = "W"
 
+[node name="TutorialHint" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 84.0
+offset_right = 900.0
+offset_bottom = 112.0
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(1, 0.9, 0.5, 1)
+
 [connection signal="pressed" from="HUD/AbilityBar/AbilityQ" to="HUD" method="_on_ability_q"]
 [connection signal="pressed" from="HUD/AbilityBar/AbilityW" to="HUD" method="_on_ability_w"]
 

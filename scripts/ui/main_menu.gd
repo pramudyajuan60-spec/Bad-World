@@ -12,6 +12,9 @@ func _ready() -> void:
 	$Center/VBox/Exit.pressed.connect(_on_exit)
 	_continue_btn.disabled = not SaveSystem.has_save("quicksave")
 	$Title.text = "BAD WORLD"
+	# MVP 6c: content warning on first launch.
+	if not FileAccess.file_exists("user://warning_seen"):
+		$ContentWarning.visible = true
 
 
 func _on_start() -> void:
@@ -32,3 +35,10 @@ func _on_settings() -> void:
 
 func _on_exit() -> void:
 	get_tree().quit()
+
+
+func _on_warning_ack() -> void:
+	var f := FileAccess.open("user://warning_seen", FileAccess.WRITE)
+	f.store_string("1")
+	f.close()
+	$ContentWarning.visible = false

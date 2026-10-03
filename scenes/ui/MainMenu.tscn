@@ -44,3 +44,35 @@ text = "Settings"
 [node name="Exit" type="Button" parent="Center/VBox"]
 custom_minimum_size = Vector2(300, 56)
 text = "Exit"
+
+[node name="ContentWarning" type="PanelContainer" parent="."]
+visible = false
+offset_left = -320.0
+offset_top = -200.0
+offset_right = 320.0
+offset_bottom = 200.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="ContentWarning"]
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="ContentWarning/VBox"]
+text = "CONTENT WARNING"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+
+[node name="Body" type="Label" parent="ContentWarning/VBox"]
+text = "Bad World depicts organized crime, drug trade, and violence.\nThis is a work of fiction. Player discretion advised."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Ack" type="Button" parent="ContentWarning/VBox"]
+text = "I Understand"
+
+[connection signal="pressed" from="ContentWarning/VBox/Ack" to="." method="_on_warning_ack"]

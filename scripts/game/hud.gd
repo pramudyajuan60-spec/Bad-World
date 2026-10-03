@@ -72,6 +72,10 @@ func show_end_screen(won: bool, reason: String, summary: Dictionary) -> void:
 		summary["money_earned"], summary["mc_level"], summary["units"]]
 
 
+func set_tutorial(text: String) -> void:
+	($TutorialHint as Label).text = text
+
+
 func flash(text: String, warning := false) -> void:
 	_flash_label.text = text
 	_flash_label.modulate = Color(1, 0.4, 0.4, 1) if warning else Color(1, 1, 1, 1)

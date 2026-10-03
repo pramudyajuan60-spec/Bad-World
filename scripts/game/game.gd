@@ -47,6 +47,10 @@ var game_over: bool = false
 var victory: bool = false
 var _kill_count: int = 0
 var _money_earned: int = 0
+# --- MVP 6c: tutorial + autosave ---
+var _tutorial_step: int = 0
+var _autosave_timer: float = 300.0
+const AUTOSAVE_INTERVAL := 300.0
 # --- MVP 2d: economy ---
 var money: int = 4000
 var morale: float = 100.0  # 0..100, affects accuracy
@@ -94,6 +98,12 @@ func _process(delta: float) -> void:
 		_run_ai_director()
 	# MVP 6a: check victory/defeat.
 	_check_end_conditions()
+	# MVP 6c: tutorial + autosave.
+	_update_tutorial(delta)
+	_autosave_timer -= delta
+	if _autosave_timer <= 0.0:
+		_autosave_timer = AUTOSAVE_INTERVAL
+		SaveSystem.save_game(self, "autosave")
 	# DEA response logic.
 	_update_dea(delta)
 	# Refresh economy HUD (payroll countdown ticks).
@@ -1203,6 +1213,27 @@ func _get_summary() -> Dictionary:
 		"mc_level": mc_level,
 		"units": get_unit_count(),
 	}
+
+
+func _update_tutorial(delta: float) -> void:
+	# MVP 6c: contextual tutorial hints.
+	if _tutorial_step == 0:
+		_hud.set_tutorial("Select your units: left-click or drag a box.")
+		if not _selected.is_empty():
+			_tutorial_step = 1
+	elif _tutorial_step == 1:
+		_hud.set_tutorial("Right-click to move. Press A then right-click for attack-move.")
+		if _kill_count > 0:
+			_tutorial_step = 2
+	elif _tutorial_step == 2:
+		_hud.set_tutorial("Press F1/F2/F3 to recruit. C: load cargo at factory, X: sell/deposit.")
+		if money > 4500 or get_unit_count() > 4:
+			_tutorial_step = 3
+	elif _tutorial_step == 3:
+		_hud.set_tutorial("Buy vehicles (F4/F6/F7/F8), press E to enter. Q/W for MC abilities.")
+		_tutorial_step = 4
+	elif _tutorial_step == 4:
+		_hud.set_tutorial("")  # done
 
 
 func _handle_hotkey(ev: InputEventKey) -> void:
