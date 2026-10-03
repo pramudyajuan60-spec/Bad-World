@@ -18,9 +18,7 @@ const DIR_NW := "nw"
 @export var unit_name: String = "Unit"
 @export var max_hp: float = 100.0
 @export var move_speed: float = 140.0
-@export var attack_range: float = 220.0
-@export var attack_damage: float = 12.0
-@export var attack_cooldown: float = 0.8
+@export var weapon_id: StringName = &"rifle"
 @export var sight_range: float = 320.0
 @export var is_enemy: bool = false
 
@@ -29,6 +27,12 @@ var state: int = State.IDLE
 var target: RTSUnit = null  # attack target (null = move order only)
 var attack_move_pos: Vector2 = Vector2.INF  # attack-move destination
 var selected: bool = false
+# --- MVP 2 weapon state ---
+var weapon: WeaponData
+var ammo_in_mag: int = 0
+var reserve_ammo: int = 0
+var is_reloading: bool = false
+var _reload_timer: float = 0.0
 
 var _nav: NavigationAgent2D
 var _sprite: AnimatedSprite2D
@@ -53,15 +57,49 @@ func _ready() -> void:
 	# RVO avoidance so units don't stack (acceptance: "Unit tidak menumpuk")
 	_nav.avoidance_enabled = true
 	_nav.radius = 14.0
+	equip_weapon(weapon_id)
 	_play("idle", _facing)
 	_update_selection_visual()
 	_update_hp_bar()
+
+
+## Equip a weapon by id; resets magazine from the weapon's default reserve.
+func equip_weapon(id: StringName) -> void:
+	weapon = WeaponsDB.get_weapon(id)
+	if weapon == null:
+		weapon = WeaponsDB.get_weapon(&"rifle")
+	weapon_id = weapon.id
+	ammo_in_mag = weapon.magazine_size
+	reserve_ammo = weapon.reserve_ammo
+	is_reloading = false
+	_reload_timer = 0.0
+
+
+func start_reload() -> void:
+	if is_reloading or weapon == null:
+		return
+	if ammo_in_mag >= weapon.magazine_size or reserve_ammo <= 0:
+		return
+	is_reloading = true
+	_reload_timer = weapon.reload_time
+
+
+func _finish_reload() -> void:
+	var need: int = weapon.magazine_size - ammo_in_mag
+	var take: int = mini(need, reserve_ammo)
+	ammo_in_mag += take
+	reserve_ammo -= take
+	is_reloading = false
 
 
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 	_attack_timer = maxf(0.0, _attack_timer - delta)
+	if is_reloading:
+		_reload_timer -= delta
+		if _reload_timer <= 0.0:
+			_finish_reload()
 	match state:
 		State.IDLE:
 			_acquire_target()
@@ -204,7 +242,7 @@ func _combat(delta: float) -> void:
 		return
 	var to: Vector2 = target.global_position - global_position
 	_update_facing(to.normalized())
-	if to.length() > attack_range:
+	if to.length() > weapon.attack_range:
 		# chase
 		_nav.target_position = target.global_position
 		_follow_path(delta)
@@ -212,11 +250,47 @@ func _combat(delta: float) -> void:
 		velocity = Vector2.ZERO
 		move_and_slide()
 		_nav.target_position = global_position
-		if _attack_timer <= 0.0:
-			_attack_timer = attack_cooldown
-			_play("attack", _facing, true)
-			# small delay so the hit lands mid-swing; simple immediate hit for MVP
-			target.take_damage(attack_damage, self)
+		_try_fire()
+
+
+func _try_fire() -> void:
+	# Out of ammo and nothing to reload with: cannot attack.
+	if ammo_in_mag <= 0 and reserve_ammo <= 0:
+		return
+	# Auto-reload when magazine is empty.
+	if ammo_in_mag <= 0:
+		start_reload()
+		return
+	if is_reloading:
+		return
+	if _attack_timer > 0.0:
+		return
+	# Line-of-sight check before firing.
+	if not _has_los(target):
+		return
+	_attack_timer = 1.0 / weapon.rate_of_fire
+	_play("attack", _facing, true)
+	ammo_in_mag -= 1
+	# Accuracy roll per pellet.
+	for i in weapon.pellets:
+		var hit_chance: float = weapon.accuracy * _accuracy_modifier()
+		if randf() <= hit_chance:
+			target.take_damage(weapon.damage, self)
+
+
+## Combined accuracy modifier from morale/suppression/cover (MVP 2b hooks).
+func _accuracy_modifier() -> float:
+	return 1.0
+
+
+func _has_los(target_unit: RTSUnit) -> bool:
+	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	var query := PhysicsRayQueryParameters2D.create(
+		global_position, target_unit.global_position)
+	query.exclude = [self]
+	query.collision_mask = 1  # world/obstacle layer
+	var hit: Dictionary = space.intersect_ray(query)
+	return hit.is_empty()
 
 
 func _update_facing(dir: Vector2) -> void:
@@ -239,7 +313,8 @@ func _play_state_anim() -> void:
 		State.MOVING:
 			_play("walk", _facing)
 		State.ATTACKING:
-			if _attack_timer > attack_cooldown * 0.5:
+			var cd: float = 1.0 / weapon.rate_of_fire if weapon else 0.8
+			if _attack_timer > cd * 0.5:
 				pass  # attack anim already triggered
 			elif target != null:
 				_play("attack", _facing)

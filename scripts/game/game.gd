@@ -108,8 +108,7 @@ func _build_map() -> void:
 func _spawn_initial_units() -> void:
 	# Juan + 3x B1 (per MVP 1 spec), player side, bottom-left area
 	_spawn_unit("Juan Bellarosa", JUAN_FRAMES, Vector2(-1100, 800),
-		false, {"max_hp": 220.0, "move_speed": 165.0, "attack_damage": 22.0,
-			"attack_range": 260.0, "attack_cooldown": 0.7})
+		false, {"max_hp": 220.0, "move_speed": 165.0, "weapon_id": &"rifle"})
 	var b1_pos := [Vector2(-1000, 850), Vector2(-1050, 720), Vector2(-950, 740)]
 	for i in 3:
 		_spawn_unit("B1-%d" % (i + 1), B1_FRAMES, b1_pos[i], false, {})
@@ -330,6 +329,10 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			_hud.get_node("Hint").text = "Attack-move: right-click a destination..."
 		KEY_H:
 			_toggle_pause()
+		KEY_R:
+			for u in _selected:
+				u.start_reload()
+			_hud.flash("Reloading...")
 		KEY_F5:
 			SaveSystem.save_game(self, "quicksave")
 			_hud.flash("Saved.")
@@ -394,6 +397,9 @@ func get_save_data() -> Dictionary:
 			"pos": [u.global_position.x, u.global_position.y],
 			"hp": u.hp,
 			"hero": u.unit_name == "Juan Bellarosa",
+			"weapon": String(u.weapon_id),
+			"ammo_mag": u.ammo_in_mag,
+			"ammo_reserve": u.reserve_ammo,
 		})
 	return {"units": units_data, "campaign": "campaign_juan"}
 
@@ -409,4 +415,8 @@ func apply_save_data(data: Dictionary) -> void:
 		var u := _spawn_unit(ud["name"], frames,
 			Vector2(ud["pos"][0], ud["pos"][1]), ud["enemy"], {})
 		u.hp = ud["hp"]
+		if ud.has("weapon"):
+			u.equip_weapon(StringName(ud["weapon"]))
+			u.ammo_in_mag = int(ud.get("ammo_mag", u.ammo_in_mag))
+			u.reserve_ammo = int(ud.get("ammo_reserve", u.reserve_ammo))
 	_update_hud()
