@@ -166,6 +166,11 @@ func _build_map() -> void:
 	_spawn_recruit_building(Vector2(-1250, 950))
 	# MVP 2e: Gun shop near recruitment
 	_spawn_gun_shop(Vector2(-1050, 950))
+	# MVP 2f: Safe zone covering player base (recruit + gun shop)
+	var sz := SafeZone.new()
+	sz.position = Vector2(-1150, 950)
+	sz.radius = 280.0
+	add_child(sz)
 	# MVP 2 cover points (sandbags/crates): directional, don't block LoS
 	var cover_spots: Array[Vector2] = [
 		Vector2(-700, 500), Vector2(-300, 600), Vector2(100, 400),

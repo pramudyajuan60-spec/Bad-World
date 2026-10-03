@@ -229,6 +229,11 @@ func order_attack(unit: RTSUnit) -> void:
 	if unit.state == State.DOWNED and unit.surrendered and unit.is_enemy != is_enemy:
 		unit._recruited_by(self)
 		return
+	# Safe zone: refuse attacks inside.
+	if SafeZone.is_in_safe_zone(unit.global_position, get_tree()):
+		if not is_enemy:
+			_game()._hud.flash("Can't attack in safe zone!", true)
+		return
 	target = unit
 	attack_move_pos = Vector2.INF
 	revive_target = null
@@ -370,6 +375,8 @@ func _acquire_target() -> void:
 	for f in foes:
 		if f.state == State.DEAD or f.state == State.DOWNED:
 			continue  # don't auto-target downed (manual execution only)
+		if SafeZone.is_in_safe_zone(f.global_position, get_tree()):
+			continue  # safe zone: no combat
 		var d: Vector2 = f.global_position - global_position
 		if d.length() < best_d:
 			best_d = d.length()
