@@ -22,10 +22,68 @@ var _last_click_time: int = 0
 var _last_click_unit: RTSUnit = null
 var _attack_move_pending: bool = false
 var _paused: bool = false
+# --- MVP 2d: economy ---
+var money: int = 4000
+var morale: float = 100.0  # 0..100, affects accuracy
+var payroll_timer: float = 120.0
+const PAYROLL_INTERVAL: float = 120.0
+var missed_payrolls: int = 0
 
 @onready var _camera: RTSCamera = $RTSCamera
 @onready var _select_box: Line2D = $SelectBox
 @onready var _hud: CanvasLayer = $HUD
+
+
+func _process(delta: float) -> void:
+	if _paused:
+		return
+	# Payroll every 120s.
+	payroll_timer -= delta
+	if payroll_timer <= 0.0:
+		payroll_timer = PAYROLL_INTERVAL
+		_run_payroll()
+	# Morale recovers slowly when paid.
+	if missed_payrolls == 0 and morale < 100.0:
+		morale = minf(100.0, morale + delta * 2.0)
+	# Refresh economy HUD (payroll countdown ticks).
+	_hud.update_economy(money, morale, payroll_timer)
+
+
+func _total_salary() -> int:
+	var total := 0
+	for u in _units:
+		if u.is_enemy or u.state == RTSUnit.State.DEAD:
+			continue
+		total += u.salary
+	return total
+
+
+func _run_payroll() -> void:
+	var due := _total_salary()
+	if due <= 0:
+		return
+	if money >= due:
+		money -= due
+		missed_payrolls = 0
+		_hud.flash("Payroll paid: $%d" % due)
+	else:
+		missed_payrolls += 1
+		morale = maxf(0.0, morale - 25.0)
+		_hud.flash("WARNING: Can't pay salaries! Morale dropping.", true)
+		if missed_payrolls >= 2:
+			# B1 may desert; others get combat penalty (handled via morale)
+			for u in _units.duplicate():
+				if not u.is_enemy and u.unit_tier == 1 and u.unit_name != "Juan Bellarosa":
+					if randf() < 0.3:
+						_hud.flash(u.unit_name + " deserted!", true)
+						_remove_unit(u)
+	_update_hud()
+
+
+func _remove_unit(u: RTSUnit) -> void:
+	_units.erase(u)
+	_selected.erase(u)
+	u.queue_free()
 
 
 func _ready() -> void:
@@ -34,7 +92,8 @@ func _ready() -> void:
 	_spawn_initial_units()
 	_hud.get_node("Hint").text = (
 		"LMB: select | Shift+LMB: add | Drag: box | Double-click: select type\n"
-		+ "RMB: move | A+RMB: attack-move | S: stop | Ctrl+1..9 / 1..9: groups | Esc: pause")
+		+ "RMB: move | A+RMB: attack-move | S: stop | D: defend | R: reload\n"
+		+ "F1/F2/F3: recruit B1/B2/B3 | Ctrl+1..9 / 1..9: groups | Esc: pause")
 
 
 func _build_map() -> void:
@@ -103,6 +162,8 @@ func _build_map() -> void:
 	border.default_color = Color(0.9, 0.75, 0.4, 0.8)
 	border.width = 4.0
 	add_child(border)
+	# MVP 2d: Recruitment building (player base, bottom-left)
+	_spawn_recruit_building(Vector2(-1250, 950))
 	# MVP 2 cover points (sandbags/crates): directional, don't block LoS
 	var cover_spots: Array[Vector2] = [
 		Vector2(-700, 500), Vector2(-300, 600), Vector2(100, 400),
@@ -126,6 +187,50 @@ func _build_map() -> void:
 		vis.color = Color(0.55, 0.48, 0.32, 0.9)
 		cp.add_child(vis)
 		add_child(cp)
+
+
+func _spawn_recruit_building(pos: Vector2) -> void:
+	var b := RecruitBuilding.new()
+	b.position = pos
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(120, 100)
+	shape.shape = rect
+	b.add_child(shape)
+	var vis := Polygon2D.new()
+	vis.polygon = PackedVector2Array([
+		Vector2(-60, -50), Vector2(60, -50),
+		Vector2(60, 50), Vector2(-60, 50)])
+	vis.color = Color(0.35, 0.42, 0.55, 0.95)
+	b.add_child(vis)
+	var label := Label.new()
+	label.text = "RECRUIT"
+	label.position = Vector2(-35, -10)
+	label.add_theme_font_size_override("font_size", 14)
+	b.add_child(label)
+	add_child(b)
+	b.recruit_complete.connect(_on_recruit_complete.bind(b))
+
+
+func _on_recruit_complete(tier: int, building: RecruitBuilding) -> void:
+	var data: Dictionary = RecruitBuilding.RECRUIT_DATA[tier]
+	var spawn_pos: Vector2 = building.position + Vector2(100, 0)
+	var u := _spawn_unit("%s-%d" % [data["name"], _units.size() + 1],
+		B1_FRAMES, spawn_pos, false, {
+			"max_hp": data["hp"],
+			"weapon_id": data["weapon"],
+			"unit_tier": tier,
+			"salary": data["salary"],
+		})
+	_hud.flash("%s recruited!" % data["name"])
+
+
+func get_unit_count() -> int:
+	var n := 0
+	for u in _units:
+		if not u.is_enemy and u.state != RTSUnit.State.DEAD:
+			n += 1
+	return n
 
 
 func _spawn_initial_units() -> void:
@@ -351,6 +456,24 @@ func _flash_marker(world_pos: Vector2, color: Color) -> void:
 	m.setup(color)
 
 
+func _try_recruit(tier: int) -> void:
+	var buildings := get_tree().get_nodes_in_group("recruit_building")
+	if buildings.is_empty():
+		_hud.flash("No recruitment building!", true)
+		return
+	var b: RecruitBuilding = buildings[0]
+	var data: Dictionary = RecruitBuilding.RECRUIT_DATA[tier]
+	if get_unit_count() >= 31:
+		_hud.flash("Unit cap reached (31)!", true)
+		return
+	if money < int(data["price"]):
+		_hud.flash("Not enough money! Need $%d" % int(data["price"]), true)
+		return
+	if b.queue_recruit(tier, self):
+		_hud.flash("Training %s ($%d)..." % [data["name"], int(data["price"])])
+		_update_hud()
+
+
 func _handle_hotkey(ev: InputEventKey) -> void:
 	match ev.keycode:
 		KEY_S:
@@ -374,6 +497,12 @@ func _handle_hotkey(ev: InputEventKey) -> void:
 			for u in _selected:
 				u.order_defend(any_off)
 			_hud.flash("Defend mode: " + ("ON" if any_off else "OFF"))
+		KEY_F1:
+			_try_recruit(1)
+		KEY_F2:
+			_try_recruit(2)
+		KEY_F3:
+			_try_recruit(3)
 		KEY_F5:
 			SaveSystem.save_game(self, "quicksave")
 			_hud.flash("Saved.")
@@ -423,6 +552,7 @@ func restart() -> void:
 
 func _update_hud() -> void:
 	_hud.update_selection(_selected)
+	_hud.update_economy(money, morale, payroll_timer)
 
 
 # ------------------------------------------------------------------ save
@@ -442,7 +572,8 @@ func get_save_data() -> Dictionary:
 			"ammo_mag": u.ammo_in_mag,
 			"ammo_reserve": u.reserve_ammo,
 		})
-	return {"units": units_data, "campaign": "campaign_juan"}
+	return {"units": units_data, "campaign": "campaign_juan",
+		"money": money, "morale": morale, "payroll_timer": payroll_timer}
 
 
 func apply_save_data(data: Dictionary) -> void:
@@ -460,4 +591,7 @@ func apply_save_data(data: Dictionary) -> void:
 			u.equip_weapon(StringName(ud["weapon"]))
 			u.ammo_in_mag = int(ud.get("ammo_mag", u.ammo_in_mag))
 			u.reserve_ammo = int(ud.get("ammo_reserve", u.reserve_ammo))
+	money = int(data.get("money", 4000))
+	morale = float(data.get("morale", 100.0))
+	payroll_timer = float(data.get("payroll_timer", PAYROLL_INTERVAL))
 	_update_hud()

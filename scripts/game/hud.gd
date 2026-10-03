@@ -21,9 +21,17 @@ func update_selection(selected: Array) -> void:
 		info.text = "%d selected: %s" % [selected.size(), ", ".join(names)]
 
 
-func flash(text: String) -> void:
+func update_economy(money: int, morale: float, payroll_in: float) -> void:
+	var label: Label = $EconomyInfo
+	var morale_str := "Morale %d%%" % int(morale)
+	if morale < 50.0:
+		morale_str = "[LOW] " + morale_str
+	label.text = "$%d | %s | Payroll %ds" % [money, morale_str, int(payroll_in)]
+
+
+func flash(text: String, warning := false) -> void:
 	_flash_label.text = text
-	_flash_label.modulate.a = 1.0
+	_flash_label.modulate = Color(1, 0.4, 0.4, 1) if warning else Color(1, 1, 1, 1)
 	if _flash_tween and _flash_tween.is_valid():
 		_flash_tween.kill()
 	_flash_tween = create_tween()

@@ -21,6 +21,8 @@ const DIR_NW := "nw"
 @export var weapon_id: StringName = &"rifle"
 @export var sight_range: float = 320.0
 @export var is_enemy: bool = false
+@export var unit_tier: int = 1  # 1=B1, 2=B2, 3=B3, 4=Special
+@export var salary: int = 35  # per payroll cycle
 
 var hp: float
 var state: int = State.IDLE
@@ -435,11 +437,17 @@ func _try_fire() -> void:
 			target.take_damage(weapon.damage, self)
 
 
-## Combined accuracy modifier from morale/suppression/cover (MVP 2b hooks).
+## Combined accuracy modifier from morale/suppression/defend.
 func _accuracy_modifier() -> float:
 	var m: float = 1.0 - suppression * 0.5  # suppressed: up to -50% accuracy
 	if defend_mode:
 		m *= 1.15  # steady aim while holding position
+	var game := _game()
+	if game != null and "morale" in game:
+		if game.morale < 50.0:
+			m *= 0.8 + 0.2 * (game.morale / 50.0)
+		if game.missed_payrolls > 0:
+			m *= 0.9
 	return m
 
 
