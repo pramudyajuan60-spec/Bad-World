@@ -24,6 +24,8 @@ var _last_click_time: int = 0
 var _last_click_unit: RTSUnit = null
 var _attack_move_pending: bool = false
 var _paused: bool = false
+# --- MVP 4: active campaign ---
+var campaign: CampaignData
 # --- MVP 2d: economy ---
 var money: int = 4000
 var morale: float = 100.0  # 0..100, affects accuracy
@@ -141,6 +143,7 @@ func _remove_unit(u: RTSUnit) -> void:
 
 
 func _ready() -> void:
+	_load_campaign()
 	_camera.map_bounds = MAP_BOUNDS
 	_build_map()
 	_spawn_initial_units()
@@ -149,6 +152,16 @@ func _ready() -> void:
 		+ "RMB: move | A+RMB: attack-move | S: stop | D: defend | R: reload\n"
 		+ "F1/F2/F3: recruit | C: load cargo | X: sell/deposit\n"
 		+ "Shift+1..6: buy weapon | G: grenade | V: vest | T: ammo | Esc: pause")
+
+
+func _load_campaign() -> void:
+	var cid: StringName = GameState.pending_campaign
+	if cid == &"":
+		cid = &"campaign_juan"
+	campaign = CampaignDatabase.campaigns.get(cid)
+	if campaign == null:
+		campaign = CampaignDatabase.campaigns.get(&"campaign_juan")
+	money = campaign.starting_money
 
 
 func _build_map() -> void:
@@ -260,8 +273,18 @@ func _spawn_economy() -> void:
 		var f := Factory.new()
 		f.position = factory_spots[faction]
 		f.faction = faction
-		if faction == "nasion":
-			f.level = 2  # Andres starts with L2 factory (BALANCE.md)
+	# Player's factory uses campaign start level (Andres=L2).
+		var player_faction := "bellarosa"
+		if campaign != null:
+			match campaign.id:
+				&"campaign_fauzi":
+					player_faction = "vartieri"
+				&"campaign_atha":
+					player_faction = "nasion"
+				&"campaign_nabil":
+					player_faction = "dea"
+		if faction == player_faction and campaign != null:
+			f.level = campaign.factory_start_level
 		var shape := CollisionShape2D.new()
 		var rect := RectangleShape2D.new()
 		rect.size = Vector2(140, 110)
@@ -435,12 +458,24 @@ func get_unit_count() -> int:
 
 
 func _spawn_initial_units() -> void:
-	# Juan + 3x B1 (per MVP 1 spec), player side, bottom-left area
-	_spawn_unit("Juan Bellarosa", JUAN_FRAMES, Vector2(-1100, 800),
-		false, {"max_hp": 220.0, "move_speed": 165.0, "weapon_id": &"rifle"})
-	var b1_pos := [Vector2(-1000, 850), Vector2(-1050, 720), Vector2(-950, 740)]
+	# MVP 4: faction-specific spawn.
+	var mc_name: String = campaign.main_character_name
+	var is_nabil: bool = campaign.id == &"campaign_nabil"
+	# MC + starting squad (Nabil gets B2, others get B1).
+	_spawn_unit(mc_name, JUAN_FRAMES, Vector2(-1100, 800),
+		false, {"max_hp": 220.0, "move_speed": 165.0, "weapon_id": &"rifle",
+			"unit_tier": 4, "salary": 0})
+	var squad_pos := [Vector2(-1000, 850), Vector2(-1050, 720), Vector2(-950, 740)]
 	for i in 3:
-		_spawn_unit("B1-%d" % (i + 1), B1_FRAMES, b1_pos[i], false, {})
+		if is_nabil:
+			_spawn_unit("B2-%d" % (i + 1), B1_FRAMES, squad_pos[i], false, {
+				"max_hp": 170.0, "weapon_id": &"rifle",
+				"unit_tier": 2, "salary": 110})
+		else:
+			_spawn_unit("B1-%d" % (i + 1), B1_FRAMES, squad_pos[i], false, {
+				"unit_tier": 1, "salary": 35})
+	# Starting vehicle from campaign.
+	spawn_vehicle(campaign.starting_vehicle, Vector2(-850, 900))
 	# Dummy enemy group: 3 hostiles, top-right area (reuse B1 art, red tint)
 	var e_pos := [Vector2(900, -700), Vector2(1000, -650), Vector2(950, -780)]
 	for i in 3:
@@ -702,8 +737,11 @@ func _try_recruit(tier: int) -> void:
 		return
 	var b: RecruitBuilding = buildings[0]
 	var data: Dictionary = RecruitBuilding.RECRUIT_DATA[tier]
-	if get_unit_count() >= 31:
-		_hud.flash("Unit cap reached (31)!", true)
+	if get_unit_count() >= campaign.unit_cap + 1:  # +1 for MC
+		_hud.flash("Unit cap reached (%d)!" % (campaign.unit_cap + 1), true)
+		return
+	if tier == 1 and not campaign.can_recruit_b1:
+		_hud.flash("Nabil cannot recruit B1!", true)
 		return
 	if money < int(data["price"]):
 		_hud.flash("Not enough money! Need $%d" % int(data["price"]), true)

@@ -229,10 +229,13 @@ func order_attack(unit: RTSUnit) -> void:
 		return
 	if unit == null or unit.state == State.DEAD:
 		return
-	# Recruit surrendered enemies instead of executing (Juan's faction trait).
+	# Recruit surrendered enemies instead of executing (faction trait).
 	if unit.state == State.DOWNED and unit.surrendered and unit.is_enemy != is_enemy:
-		unit._recruited_by(self)
-		return
+		var game := _game()
+		if game != null and game.campaign != null and game.campaign.can_recruit_surrendered:
+			unit._recruited_by(self)
+			return
+		# else: fall through to execution
 	# Safe zone: refuse attacks inside.
 	if SafeZone.is_in_safe_zone(unit.global_position, get_tree()):
 		if not is_enemy:
@@ -465,6 +468,10 @@ func _accuracy_modifier() -> float:
 			m *= 0.8 + 0.2 * (game.morale / 50.0)
 		if game.missed_payrolls > 0:
 			m *= 0.9
+		# Juan's faction: regulars get accuracy bonus.
+		if game.campaign != null and game.campaign.accuracy_bonus > 0.0:
+			if unit_tier < 4:  # regulars only, not Specials/MC
+				m *= 1.0 + game.campaign.accuracy_bonus
 	return m
 
 

@@ -17,3 +17,10 @@ extends Resource
 @export_file("*.png", "*.jpg", "*.jpeg") var main_character_sprite_path: String = ""
 ## Concept art map for this faction's home territory (not collision-ready).
 @export_file("*.png", "*.jpg", "*.jpeg") var concept_map_path: String = ""
+# --- MVP 4 faction gameplay ---
+@export var unit_cap: int = 30  # max recruited (excl. MC); Nabil=24
+@export var can_recruit_b1: bool = true  # Nabil=false
+@export var can_recruit_surrendered: bool = true  # Nabil=false
+@export var factory_start_level: int = 1  # Andres=2
+@export var accuracy_bonus: float = 0.0  # Juan regulars +0.05
+@export var starting_vehicle: StringName = &"utility"
